@@ -1,6 +1,14 @@
 # Intent Memo
 
-**의도 메모**는 AI 시대에 인간이 자신의 생각과 의도를 직접 기록하는 미니멀 Markdown 데스크톱 앱입니다. 선택한 폴더의 Markdown 파일이 원본이며, 앱은 그 원본을 편집하고 읽는 데 집중합니다.
+**의도 메모**는 AI에게 무언가를 맡기기 전에 인간이 자신의 생각과 의도를 먼저 정리해 기록하는 미니멀 Markdown 데스크톱 앱입니다. 선택한 폴더의 Markdown 파일이 원본이며, 앱은 그 원본을 편집하고 읽는 데 집중합니다.
+
+완성된 AI prompt를 작성해 복사하는 PromptPad에서 pivot한 제품입니다. 좋은 prompt보다 먼저 필요한 것은 "내가 무엇을, 왜 원하는가"라는 의도이며, Intent Memo는 그 prompt 이전 단계의 기록에 집중합니다.
+
+## 방향
+
+- Markdown editor 기본 기능에서 출발합니다: 빠르고 안전한 작성, 자동 저장, 사용자가 소유하는 로컬 원본.
+- 그 위에 목적, 배경, 제약, 완료 조건처럼 의도를 구체화하는 데 필요한 작성 편의 기능을 단계적으로 더합니다.
+- AI 기능은 인간이 작성한 원본을 대체하지 않는 파생 계층으로만 후속 버전에서 검토합니다.
 
 ## v0.1
 
@@ -16,15 +24,13 @@
 
 ## Data
 
-첫 실행에서 사용자가 `libraryRoot`를 선택합니다. 파일명은 제목의 source of truth이며, 새 문서는 최소 frontmatter만 가집니다.
+첫 실행에서 사용자가 `libraryRoot`를 선택합니다. 파일명은 제목의 source of truth이며, 새 문서는 최소 frontmatter와 빈 본문으로 시작합니다.
 
 ```markdown
 ---
 created: 2026-08-02T00:00:00.000Z
 updated: 2026-08-02T00:00:00.000Z
 ---
-
-나의 의도와 생각
 ```
 
 숨김 경로와 symlink는 탐색하지 않습니다. 삭제는 영구 삭제 대신 운영체제 휴지통을 사용합니다. 설정은 bundle ID `app.tkbetter.intentmemo`의 OS app-data 위치에 `settings.json`으로 저장됩니다.
@@ -50,9 +56,7 @@ pnpm tauri:build
 
 ## Release
 
-```bash
-pnpm release patch
-```
+첫 Intent Memo 릴리스의 버전과 태그는 아직 확정하지 않았습니다. 기존 PromptPad의 `v0.1.x` 태그와 충돌하므로 현재 `0.1.0`에서 `pnpm release patch`를 실행하지 않습니다.
 
 A `v*` tag triggers the signed macOS release workflow. Publishing the draft release triggers `.github/workflows/homebrew-bump.yml`, which renders `distribution/homebrew/intent-memo.rb` with release checksums and updates `tkhwang/homebrew-tap`. The repository secret `TAP_GITHUB_TOKEN` must have Contents write access to that tap.
 
