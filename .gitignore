@@ -28,4 +28,6 @@ Thumbs.db
 
 # Claude Code
 .claude/
-docs/plans/
+.omc/
+.omx/
+.scratch/

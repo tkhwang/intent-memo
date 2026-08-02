@@ -1,121 +1,65 @@
-# PromptPad
+# Intent Memo
 
-A desktop app for managing AI prompt templates. Prompts are stored as plain Markdown files on your filesystem — no cloud, no lock-in.
+**의도 메모**는 AI 시대에 인간이 자신의 생각과 의도를 직접 기록하는 미니멀 Markdown 데스크톱 앱입니다. 선택한 폴더의 Markdown 파일이 원본이며, 앱은 그 원본을 편집하고 읽는 데 집중합니다.
 
-Built with [Tauri 2](https://v2.tauri.app/) + [React 19](https://react.dev/) + [NestJS 11](https://nestjs.com/), managed as a [Turborepo](https://turbo.build/) monorepo.
+## v0.1
 
-## Features
+- 단일 Markdown library와 임의 깊이의 폴더
+- 문서·폴더 생성, 이름 변경, 이동, 시스템 휴지통 이동
+- CodeMirror 6 Markdown syntax highlighting
+- 500ms autosave, atomic write, 외부 변경 충돌 보호
+- 동일 문서의 `Edit` / rendered `View`
+- `⌘1` 폴더 pane, `⌘2` content-only 전환
+- OS light/dark와 고정 CJK typography
 
-- **File-based storage** — Prompts are Markdown files with YAML frontmatter, organized in topic folders. Portable and version-control friendly.
-- **Topic organization** — Group prompts by topic (e.g., Coding, Writing, General). Create, rename, and delete topics freely.
-- **Template variables** — Use `{{variable}}` placeholders in prompts. Fill values in a side panel and copy the final result to clipboard.
-- **Auto-save** — Changes are saved automatically with debounced writes and change detection.
-- **Search** — Instant case-insensitive search across prompt titles and bodies.
-- **Theming** — Light, dark, and system-follow modes with oklch color space.
-- **Onboarding wizard** — First-run setup for language, storage directory, theme, and font size.
-- **i18n** — English and Korean. Type-safe translations with `{{variable}}` interpolation.
-- **Keyboard shortcuts** — `Cmd+N` new prompt, `Cmd+Shift+N` new topic.
+검색, tags, Markdown toolbar, 이미지, wiki/backlink, LLM runtime과 AI 관리 폴더는 후속 범위입니다.
 
-## Data Model
+## Data
 
-The filesystem is the database. <br />
-On first launch, the onboarding wizard lets you choose where to store your prompts:
-
-```
-~/Documents/PromptPad/               # configurable prompt directory
-└── Topic/
-    └── my-prompt1.md
-    └── my-prompt2.md
-```
-
-Each prompt file:
+첫 실행에서 사용자가 `libraryRoot`를 선택합니다. 파일명은 제목의 source of truth이며, 새 문서는 최소 frontmatter만 가집니다.
 
 ```markdown
 ---
-title: Code Review
-created: 2025-01-15T10:00:00.000Z
-updated: 2025-01-15T10:30:00.000Z
-tags: []
+created: 2026-08-02T00:00:00.000Z
+updated: 2026-08-02T00:00:00.000Z
 ---
 
-Review the following {{language}} code for bugs and improvements:
-
-{{code}}
+나의 의도와 생각
 ```
 
-Settings persist via Tauri Store at `~/.PromptPad/settings.json`.
+숨김 경로와 symlink는 탐색하지 않습니다. 삭제는 영구 삭제 대신 운영체제 휴지통을 사용합니다. 설정은 bundle ID `app.tkbetter.intentmemo`의 OS app-data 위치에 `settings.json`으로 저장됩니다.
 
-## Getting Started
+## Development
 
-### Prerequisites
-
-- [Node.js](https://nodejs.org/) (v18+)
-- [pnpm](https://pnpm.io/)
-- [Rust](https://www.rust-lang.org/tools/install)
-- [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/)
-
-### Install
+Prerequisites: Node.js 18+, pnpm, Rust, and the [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/).
 
 ```bash
-git clone https://github.com/tkhwang/prompt-pad.git
-cd prompt-pad
 pnpm install
+pnpm tauri:dev
 ```
-
-### Development
 
 ```bash
-# Monorepo
-pnpm dev              # All packages in dev mode (Turborepo)
-
-# Desktop
-pnpm dev:desktop      # Vite dev server only (localhost:1420)
-pnpm tauri:dev        # Full Tauri desktop app with hot reload
-
-# Backend
-pnpm dev:backend      # NestJS watch mode (localhost:3000)
+pnpm check
+pnpm test
+pnpm build
+cargo test --manifest-path src-tauri/Cargo.toml
+pnpm tauri:build
 ```
 
-### Build
+`pnpm check` is non-mutating. Use `pnpm biome check --write .` when formatting is intended.
+
+## Release
 
 ```bash
-# Monorepo
-pnpm build            # Build all packages (shared → desktop + backend)
-
-# Desktop
-pnpm build:desktop    # tsc + Vite bundle
-pnpm tauri:build      # Production desktop binary
-
-# Backend
-pnpm build:backend    # nest build
+pnpm release patch
 ```
 
-### Lint & Format
+A `v*` tag triggers the signed macOS release workflow. Publishing the draft release triggers `.github/workflows/homebrew-bump.yml`, which renders `distribution/homebrew/intent-memo.rb` with release checksums and updates `tkhwang/homebrew-tap`. The repository secret `TAP_GITHUB_TOKEN` must have Contents write access to that tap.
 
-```bash
-pnpm check            # Biome lint + format (auto-fix) across all packages
-```
+## Stack
 
-### Release
-
-```bash
-pnpm release          # Interactive: pick version → update files → commit → tag → push
-pnpm release patch    # 0.1.0 → 0.1.1
-pnpm release minor    # 0.1.0 → 0.2.0
-pnpm release major    # 0.1.0 → 1.0.0
-```
-
-Updates version across all `package.json`, `Cargo.toml`, and `tauri.conf.json` in one step. Pushing a `v*` tag triggers the macOS build workflow.
-
-## Tech Stack
-
-| Layer         | Technology                                                |
-| ------------- | --------------------------------------------------------- |
-| Monorepo      | pnpm workspaces, Turborepo 2                              |
-| Frontend      | React 19, TypeScript (strict), Tailwind CSS v4, shadcn/ui |
-| Desktop       | Tauri 2 (Rust)                                            |
-| Backend       | NestJS 11, TypeScript (strict)                            |
-| Shared        | TypeScript types (`@prompt-pad/shared`)                   |
-| Tauri Plugins | fs, dialog, clipboard-manager, store                      |
-| Linting       | Biome                                                     |
-| Icons         | lucide-react                                              |
+- Tauri 2 / Rust
+- React 19 / TypeScript
+- CodeMirror 6
+- react-markdown + remark-gfm
+- Biome / Vitest

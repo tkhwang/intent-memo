@@ -1,31 +1,56 @@
 {
-  "name": "prompt-pad",
+  "name": "intent-memo",
   "private": true,
+  "version": "0.1.0",
+  "type": "module",
   "scripts": {
-    "build": "turbo run build",
-    "dev": "turbo run dev",
-    "check": "biome check --write .",
-    "dev:desktop": "turbo run dev --filter=@prompt-pad/desktop",
-    "dev:backend": "turbo run dev --filter=@prompt-pad/backend",
-    "tauri:dev": "pnpm --filter @prompt-pad/desktop tauri dev",
-    "tauri:dev:mas": "pnpm --filter @prompt-pad/desktop tauri dev --features app-store --config src-tauri/tauri.appstore.conf.json",
-    "tauri:build": "pnpm --filter @prompt-pad/desktop tauri build",
-    "build:desktop": "turbo run build --filter=@prompt-pad/desktop",
-    "build:backend": "turbo run build --filter=@prompt-pad/backend",
-    "build:desktop:mas": "rustup target add x86_64-apple-darwin 2>/dev/null; pnpm --filter @prompt-pad/desktop tauri build --target universal-apple-darwin --features app-store --config src-tauri/tauri.appstore.conf.json",
-    "clean": "rimraf .turbo apps/*/dist packages/*/dist apps/*/*.tsbuildinfo packages/*/*.tsbuildinfo apps/*/node_modules packages/*/node_modules node_modules",
-    "release": "bumpp --files package.json apps/*/package.json packages/*/package.json apps/desktop/src-tauri/Cargo.toml apps/desktop/src-tauri/tauri.conf.json -x \"cargo check --manifest-path apps/desktop/src-tauri/Cargo.toml && git add apps/desktop/src-tauri/Cargo.lock\""
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "check": "biome check .",
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest",
+    "preview": "vite preview",
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:dev:mas": "tauri dev --features app-store --config src-tauri/tauri.appstore.conf.json",
+    "tauri:build": "tauri build",
+    "tauri:build:mas": "rustup target add x86_64-apple-darwin 2>/dev/null; tauri build --target universal-apple-darwin --features app-store --config src-tauri/tauri.appstore.conf.json",
+    "clean": "rimraf dist *.tsbuildinfo src-tauri/target node_modules",
+    "release": "bumpp --files package.json src-tauri/Cargo.toml src-tauri/tauri.conf.json -x \"cargo check --manifest-path src-tauri/Cargo.toml && git add src-tauri/Cargo.lock\""
+  },
+  "dependencies": {
+    "@codemirror/lang-markdown": "6.5.1",
+    "@codemirror/language": "6.12.4",
+    "@codemirror/commands": "6.10.4",
+    "@codemirror/state": "6.7.1",
+    "@codemirror/view": "6.43.7",
+    "@tauri-apps/api": "2.10.1",
+    "@tauri-apps/plugin-dialog": "2.6.0",
+    "@tauri-apps/plugin-store": "2.4.2",
+    "js-yaml": "4.1.1",
+    "lucide-react": "0.564.0",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "react-markdown": "10.1.0",
+    "remark-gfm": "4.0.1",
+    "zod": "4.4.3"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.3.15",
-    "bumpp": "^10.4.1",
-    "rimraf": "^5.0.7",
-    "turbo": "^2"
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "esbuild"
-    ]
+    "@biomejs/biome": "2.4.0",
+    "@tauri-apps/cli": "2.10.0",
+    "@testing-library/react": "16.3.2",
+    "@testing-library/user-event": "14.6.1",
+    "@types/js-yaml": "4.0.9",
+    "@types/node": "20.19.33",
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
+    "@vitejs/plugin-react": "4.7.0",
+    "bumpp": "10.4.1",
+    "jsdom": "26.1.0",
+    "rimraf": "5.0.10",
+    "typescript": "5.5.4",
+    "vite": "5.4.21",
+    "vitest": "3.2.7"
   },
   "packageManager": "pnpm@10.28.1"
 }
