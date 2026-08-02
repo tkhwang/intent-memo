@@ -1,0 +1,181 @@
+import { invoke } from "@tauri-apps/api/core";
+import { z } from "zod";
+import type {
+  DocumentPayload,
+  EntryMutation,
+  LibrarySnapshot,
+} from "@/types/library";
+
+const folderEntrySchema = z.object({
+  path: z.string(),
+  parent: z.string(),
+  name: z.string(),
+});
+
+const documentEntrySchema = z.object({
+  path: z.string(),
+  parent: z.string(),
+  title: z.string(),
+  updatedMs: z.number().nonnegative(),
+});
+
+const librarySnapshotSchema = z.object({
+  folders: z.array(folderEntrySchema),
+  documents: z.array(documentEntrySchema),
+});
+
+const documentPayloadSchema = z.object({
+  path: z.string(),
+  content: z.string(),
+  mtimeMs: z.number().nonnegative(),
+});
+
+const entryMutationSchema = z.object({ path: z.string() });
+const commandErrorSchema = z.object({ code: z.string(), message: z.string() });
+
+export class NativeCommandError extends Error {
+  readonly name = "NativeCommandError";
+
+  constructor(
+    readonly code: string,
+    message: string,
+  ) {
+    super(message);
+  }
+}
+
+export async function scanLibrary(root: string): Promise<LibrarySnapshot> {
+  return await invokeParsed("scan_library", { root }, librarySnapshotSchema);
+}
+
+export async function readDocument(
+  root: string,
+  path: string,
+): Promise<DocumentPayload> {
+  return await invokeParsed(
+    "read_document",
+    { root, path },
+    documentPayloadSchema,
+  );
+}
+
+export async function createDocument(
+  root: string,
+  parent: string,
+  title: string,
+  content: string,
+): Promise<DocumentPayload> {
+  return await invokeParsed(
+    "create_document",
+    { root, parent, title, content },
+    documentPayloadSchema,
+  );
+}
+
+export async function saveDocument(
+  root: string,
+  path: string,
+  content: string,
+  expectedMtimeMs: number,
+): Promise<DocumentPayload> {
+  return await invokeParsed(
+    "save_document",
+    { root, path, content, expectedMtimeMs },
+    documentPayloadSchema,
+  );
+}
+
+export async function renameDocument(
+  root: string,
+  path: string,
+  title: string,
+  content: string,
+  expectedMtimeMs: number,
+): Promise<DocumentPayload> {
+  return await invokeParsed(
+    "rename_document",
+    { root, path, title, content, expectedMtimeMs },
+    documentPayloadSchema,
+  );
+}
+
+export async function createFolder(
+  root: string,
+  parent: string,
+  name: string,
+): Promise<EntryMutation> {
+  return await invokeParsed(
+    "create_folder",
+    { root, parent, name },
+    entryMutationSchema,
+  );
+}
+
+export async function renameFolder(
+  root: string,
+  path: string,
+  name: string,
+): Promise<EntryMutation> {
+  return await invokeParsed(
+    "rename_folder",
+    { root, path, name },
+    entryMutationSchema,
+  );
+}
+
+export async function moveEntry(
+  root: string,
+  path: string,
+  destination: string,
+): Promise<EntryMutation> {
+  return await invokeParsed(
+    "move_entry",
+    { root, path, destination },
+    entryMutationSchema,
+  );
+}
+
+export async function trashEntry(root: string, path: string): Promise<void> {
+  try {
+    await invoke("trash_entry", { root, path });
+  } catch (cause) {
+    throw normalizeNativeError(cause);
+  }
+}
+
+async function invokeParsed<T>(
+  command: string,
+  args: Record<string, unknown>,
+  schema: z.ZodType<T>,
+): Promise<T> {
+  try {
+    const result = await invoke<unknown>(command, args);
+    return schema.parse(result);
+  } catch (cause) {
+    if (cause instanceof z.ZodError) {
+      throw new NativeCommandError(
+        "invalid-response",
+        `Native response did not match its contract: ${cause.message}`,
+      );
+    }
+    throw normalizeNativeError(cause);
+  }
+}
+
+function normalizeNativeError(cause: unknown): NativeCommandError {
+  if (cause instanceof NativeCommandError) return cause;
+  const parsed = commandErrorSchema.safeParse(cause);
+  if (parsed.success) {
+    return new NativeCommandError(parsed.data.code, parsed.data.message);
+  }
+  if (cause instanceof Error) {
+    return new NativeCommandError("native-error", cause.message);
+  }
+  if (typeof cause === "string") {
+    return new NativeCommandError("native-error", cause);
+  }
+  return new NativeCommandError(
+    "native-error",
+    "Unknown native command failure",
+  );
+}

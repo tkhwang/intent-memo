@@ -1,0 +1,106 @@
+name: Bump Homebrew Cask
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag (vX.Y.Z)"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  bump-cask:
+    name: Update tkhwang/homebrew-tap
+    runs-on: macos-latest
+    env:
+      TAG_NAME: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.event.release.tag_name }}
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Validate tag
+        run: |
+          set -euo pipefail
+          case "$TAG_NAME" in
+            v*) ;;
+            *) echo "release tag must start with v: $TAG_NAME" >&2; exit 1 ;;
+          esac
+          echo "VERSION=${TAG_NAME#v}" >> "$GITHUB_ENV"
+
+      - name: Download release DMGs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          gh release download "$TAG_NAME" --repo "$GITHUB_REPOSITORY" \
+            --pattern "Intent Memo_${VERSION}_aarch64.dmg" \
+            --pattern "Intent Memo_${VERSION}_x64.dmg" \
+            --dir dist
+          test -f "dist/Intent Memo_${VERSION}_aarch64.dmg"
+          test -f "dist/Intent Memo_${VERSION}_x64.dmg"
+
+      - name: Compute checksums
+        run: |
+          set -euo pipefail
+          echo "SHA_ARM=$(shasum -a 256 "dist/Intent Memo_${VERSION}_aarch64.dmg" | awk '{print $1}')" >> "$GITHUB_ENV"
+          echo "SHA_INTEL=$(shasum -a 256 "dist/Intent Memo_${VERSION}_x64.dmg" | awk '{print $1}')" >> "$GITHUB_ENV"
+
+      - name: Checkout Homebrew tap
+        uses: actions/checkout@v4
+        with:
+          repository: tkhwang/homebrew-tap
+          token: ${{ secrets.TAP_GITHUB_TOKEN }}
+          path: homebrew-tap
+          persist-credentials: false
+
+      - name: Render cask
+        run: |
+          set -euo pipefail
+          mkdir -p homebrew-tap/Casks
+          cp distribution/homebrew/intent-memo.rb homebrew-tap/Casks/intent-memo.rb
+          CASK_PATH="homebrew-tap/Casks/intent-memo.rb" \
+          CASK_VERSION="$VERSION" \
+          python3 - <<'PY'
+          import os
+          import re
+          from pathlib import Path
+
+          cask = Path(os.environ["CASK_PATH"])
+          text = cask.read_text()
+          replacements = (
+              (r'^  version ".*"$', f'  version "{os.environ["CASK_VERSION"]}"'),
+              (r'^  sha256 arm:\s+".*",$', f'  sha256 arm:   "{os.environ["SHA_ARM"]}",'),
+              (r'^\s+intel: ".*"$', f'         intel: "{os.environ["SHA_INTEL"]}"'),
+          )
+          for pattern, replacement in replacements:
+              text, count = re.subn(pattern, replacement, text, count=1, flags=re.MULTILINE)
+              if count != 1:
+                  raise SystemExit(f"expected one cask match for {pattern!r}, got {count}")
+          cask.write_text(text)
+          PY
+          ruby -c homebrew-tap/Casks/intent-memo.rb
+
+      - name: Commit and push cask update
+        working-directory: homebrew-tap
+        env:
+          TAP_GITHUB_TOKEN: ${{ secrets.TAP_GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "$(git status --porcelain -- Casks/intent-memo.rb)" ]; then
+            echo "Casks/intent-memo.rb already matches ${TAG_NAME}"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Casks/intent-memo.rb
+          git commit -m "chore(intent-memo): update cask for ${TAG_NAME}"
+          auth_header=$(printf 'x-access-token:%s' "$TAP_GITHUB_TOKEN" | base64 | tr -d '\n')
+          git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic ${auth_header}" \
+            push https://github.com/tkhwang/homebrew-tap.git HEAD:main

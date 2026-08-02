@@ -78,8 +78,8 @@ jobs:
         run: |
           PROFILE_DIR="$HOME/Library/MobileDevice/Provisioning Profiles"
           mkdir -p "$PROFILE_DIR"
-          echo "$MAS_PROVISIONING_PROFILE" | base64 --decode > "$PROFILE_DIR/PromptPad_MAS.provisionprofile"
-          echo "PROVISIONING_PROFILE_PATH=$PROFILE_DIR/PromptPad_MAS.provisionprofile" >> "$GITHUB_ENV"
+          echo "$MAS_PROVISIONING_PROFILE" | base64 --decode > "$PROFILE_DIR/Intent_Memo_MAS.provisionprofile"
+          echo "PROVISIONING_PROFILE_PATH=$PROFILE_DIR/Intent_Memo_MAS.provisionprofile" >> "$GITHUB_ENV"
 
       # ── 4. Replace $TEAM_ID in entitlements ──────────────────────
       - name: Substitute TEAM_ID in entitlements
@@ -91,9 +91,9 @@ jobs:
             exit 1
           fi
           sed -i '' "s/\$TEAM_ID/${APPLE_TEAM_ID}/g" \
-            apps/desktop/src-tauri/entitlements.mas.plist
+            src-tauri/entitlements.mas.plist
           echo "Entitlements after substitution:"
-          cat apps/desktop/src-tauri/entitlements.mas.plist
+          cat src-tauri/entitlements.mas.plist
 
       # ── 5. Tauri build (universal binary) ────────────────────────
       - name: Build for App Store
@@ -102,15 +102,14 @@ jobs:
             --target universal-apple-darwin \
             --features app-store \
             --config src-tauri/tauri.appstore.conf.json
-        working-directory: apps/desktop
 
       # ── 6. Read version + set build number ───────────────────────
       - name: Set version and build number
         env:
           BUILD_NUMBER: ${{ inputs.build_number || github.run_number }}
         run: |
-          APP_PATH="apps/desktop/src-tauri/target/universal-apple-darwin/release/bundle/macos/PromptPad.app"
-          VERSION=$(python3 -c "import json; print(json.load(open('apps/desktop/src-tauri/tauri.conf.json'))['version'])")
+          APP_PATH="src-tauri/target/universal-apple-darwin/release/bundle/macos/Intent Memo.app"
+          VERSION=$(python3 -c "import json; print(json.load(open('src-tauri/tauri.conf.json'))['version'])")
 
           echo "App version: $VERSION"
           echo "Build number: $BUILD_NUMBER"
@@ -129,7 +128,7 @@ jobs:
       # ── 8. Deep codesign ─────────────────────────────────────────
       - name: Codesign app bundle
         run: |
-          ENTITLEMENTS="apps/desktop/src-tauri/entitlements.mas.plist"
+          ENTITLEMENTS="src-tauri/entitlements.mas.plist"
 
           # Discover signing identity from keychain
           APP_IDENTITY=$(security find-identity -v "$KEYCHAIN_PATH" | grep "3rd Party Mac Developer Application" | head -1 | awk -F'"' '{print $2}')
@@ -166,7 +165,7 @@ jobs:
           done
 
           # 4. Sign other executables in MacOS/
-          find "$APP_PATH/Contents/MacOS" -type f -perm +111 ! -name "PromptPad" -print0 | while IFS= read -r -d '' exe; do
+          find "$APP_PATH/Contents/MacOS" -type f -perm +111 ! -name "intent-memo" -print0 | while IFS= read -r -d '' exe; do
             echo "Signing executable: $exe"
             codesign "${CODESIGN_ARGS[@]}" "$exe"
           done
@@ -192,7 +191,7 @@ jobs:
             exit 1
           fi
 
-          PKG_PATH="$RUNNER_TEMP/PromptPad_${APP_VERSION}_${BUILD_NUMBER}.pkg"
+          PKG_PATH="$RUNNER_TEMP/Intent-Memo_${APP_VERSION}_${BUILD_NUMBER}.pkg"
 
           productbuild \
             --component "$APP_PATH" /Applications \
@@ -247,7 +246,7 @@ jobs:
       - name: Upload .pkg artifact
         uses: actions/upload-artifact@v4
         with:
-          name: PromptPad-MAS-${{ inputs.build_number || github.run_number }}
+          name: Intent-Memo-MAS-${{ inputs.build_number || github.run_number }}
           path: ${{ env.PKG_PATH }}
           retention-days: 30
 
@@ -264,4 +263,4 @@ jobs:
           rm -f /tmp/AuthKey_*.p8
 
           # Delete provisioning profile
-          rm -f "$HOME/Library/MobileDevice/Provisioning Profiles/PromptPad_MAS.provisionprofile"
+          rm -f "$HOME/Library/MobileDevice/Provisioning Profiles/Intent_Memo_MAS.provisionprofile"
