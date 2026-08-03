@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="1200" height="280" viewBox="0 0 1200 280"
+     role="img" aria-labelledby="title desc">
+  <title id="title">원본 우선 구조</title>
+  <desc id="desc">나의 생각과 의도를 직접 기록하면 내가 소유한 Markdown 원본이 되고, AI 기능은 후속 버전에서 원본을 대체하지 않는 읽기 전용 파생 계층으로만 추가된다.</desc>
+
+  <rect width="1200" height="280" rx="24" fill="#F4EEE2"/>
+
+  <g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', sans-serif">
+
+    <!-- card 1: human thought -->
+    <g transform="translate(84 82)">
+      <rect width="264" height="116" rx="12" fill="#FCF8F0" stroke="#E3DACA" stroke-width="1.5"/>
+      <text x="26" y="50" font-size="23" font-weight="600" fill="#322F29">나의 생각과 의도</text>
+      <text x="26" y="84" font-size="18" fill="#97907F">아직 흐릿한 상태</text>
+    </g>
+
+    <!-- arrow 1 -->
+    <g stroke="#8F8875" stroke-width="2.5" fill="none" stroke-linecap="round">
+      <line x1="362" y1="140" x2="442" y2="140"/>
+      <path d="M432 132 L 444 140 L 432 148"/>
+    </g>
+    <text x="403" y="118" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, monospace"
+          font-size="18" fill="#7E7767">직접 기록</text>
+
+    <!-- card 2: markdown original (emphasized) -->
+    <g transform="translate(458 62)">
+      <rect width="300" height="156" rx="12" fill="#FCF8F0" stroke="#D9C6AE" stroke-width="1.5"/>
+      <text x="28" y="42" font-family="ui-monospace, SFMono-Regular, Menlo, monospace"
+            font-size="16" letter-spacing="2" fill="#C1734B">SOURCE OF TRUTH</text>
+      <g transform="translate(122 74) rotate(-2.5)">
+        <text x="0" y="9" text-anchor="middle" font-size="25" font-weight="700" fill="#322F29">Markdown 원본</text>
+        <path d="M104 -16 C 66 -36, -76 -33, -108 -9 C -130 9, -70 30, 10 27 C 70 24, 108 9, 98 -6"
+              fill="none" stroke="#C1734B" stroke-width="4" stroke-linecap="round"/>
+      </g>
+      <text x="28" y="116" font-size="18" fill="#6B6355">내가 소유한 로컬 .md 파일</text>
+      <text x="28" y="142" font-size="18" fill="#97907F">자동 저장 · atomic write · 충돌 보호</text>
+    </g>
+
+    <!-- arrow 2 (one-way, dashed: future derived layer) -->
+    <g stroke="#A99F8B" stroke-width="2.5" fill="none" stroke-linecap="round">
+      <line x1="772" y1="140" x2="852" y2="140" stroke-dasharray="7 8"/>
+      <path d="M842 132 L 854 140 L 842 148"/>
+    </g>
+    <text x="813" y="118" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, monospace"
+          font-size="18" fill="#7E7767">후속 버전</text>
+
+    <!-- card 3: derived AI layer -->
+    <g transform="translate(868 82)">
+      <rect width="252" height="116" rx="12" fill="none" stroke="#C6BBA4" stroke-width="1.5" stroke-dasharray="7 8"/>
+      <text x="26" y="50" font-size="23" font-weight="600" fill="#6B6355">AI 파생 계층</text>
+      <text x="26" y="84" font-size="18" fill="#97907F">원본을 대체하지 않음</text>
+    </g>
+  </g>
+</svg>
