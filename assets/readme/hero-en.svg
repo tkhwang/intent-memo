@@ -1,0 +1,100 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="1200" height="352" viewBox="0 0 1200 352"
+     role="img" aria-labelledby="title desc">
+  <title id="title">Intent Memo</title>
+  <desc id="desc">A minimal Markdown desktop app for capturing your thinking and intent before handing work to AI. On the right, the 3-pane workspace: folders, document list, and content.</desc>
+
+  <rect width="1200" height="352" rx="24" fill="#F4EEE2"/>
+
+  <!-- title block -->
+  <g id="title-block" transform="translate(72 0)"
+     font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', sans-serif">
+    <text x="2" y="88" font-family="ui-monospace, SFMono-Regular, Menlo, monospace"
+          font-size="17" letter-spacing="3.5" fill="#97907F">MACOS · TAURI 2 · MARKDOWN</text>
+
+    <text x="0" y="156" font-size="62" font-weight="700" letter-spacing="-1" fill="#322F29">Intent Memo</text>
+
+    <!-- motif: terracotta hand-drawn ellipse around the idea -->
+    <g transform="translate(490 135) rotate(-3)">
+      <text x="0" y="8" text-anchor="middle" font-size="26" font-weight="600" fill="#6B6355">intent first</text>
+      <path d="M80 -12 C 46 -28, -56 -26, -85 -7 C -104 7, -56 24, 7 22 C 56 19, 85 6, 76 -4"
+            fill="none" stroke="#C1734B" stroke-width="4" stroke-linecap="round"/>
+    </g>
+
+    <text x="2" y="218" font-size="26" fill="#4C473E">Capture your thinking and intent first,</text>
+    <text x="2" y="256" font-size="26" fill="#4C473E">in a minimal Markdown desktop memo app.</text>
+
+    <text x="2" y="308" font-family="ui-monospace, SFMono-Regular, Menlo, monospace"
+          font-size="18" fill="#97907F">your .md is the source  ·  autosave  ·  system Trash</text>
+  </g>
+
+  <!-- workspace proof: mini 3-pane window -->
+  <g id="project-proof" transform="translate(656 42)">
+    <rect x="0" y="4" width="484" height="252" rx="14" fill="#E4DAC7" opacity="0.55"/>
+    <rect x="0" y="0" width="484" height="252" rx="14" fill="#FCF8F0" stroke="#E3DACA" stroke-width="1.5"/>
+
+    <!-- window chrome -->
+    <circle cx="22" cy="19" r="5" fill="#DCCFBC"/>
+    <circle cx="40" cy="19" r="5" fill="#DCCFBC"/>
+    <circle cx="58" cy="19" r="5" fill="#DCCFBC"/>
+    <line x1="1" y1="36" x2="483" y2="36" stroke="#EDE4D3" stroke-width="1.5"/>
+
+    <!-- pane separators -->
+    <line x1="100" y1="36" x2="100" y2="251" stroke="#EDE4D3" stroke-width="1.5"/>
+    <line x1="238" y1="36" x2="238" y2="251" stroke="#EDE4D3" stroke-width="1.5"/>
+
+    <!-- folder pane -->
+    <g fill="#C9BEA9">
+      <rect x="18" y="58" width="13" height="10" rx="2.5"/>
+      <rect x="38" y="60" width="42" height="6" rx="3"/>
+      <rect x="18" y="86" width="13" height="10" rx="2.5" fill="#B4A78D"/>
+      <rect x="38" y="88" width="50" height="6" rx="3" fill="#B4A78D"/>
+      <rect x="30" y="114" width="13" height="10" rx="2.5"/>
+      <rect x="50" y="116" width="34" height="6" rx="3"/>
+      <rect x="18" y="142" width="13" height="10" rx="2.5"/>
+      <rect x="38" y="144" width="46" height="6" rx="3"/>
+    </g>
+
+    <!-- document list pane (100..238) -->
+    <g>
+      <rect x="114" y="52" width="100" height="7" rx="3.5" fill="#B4A992"/>
+      <rect x="114" y="68" width="58" height="5.5" rx="2.75" fill="#D5CBB8"/>
+
+      <rect x="106" y="88" width="126" height="46" rx="9" fill="#F0E5D0"/>
+      <rect x="114" y="100" width="96" height="7" rx="3.5" fill="#7E7460"/>
+      <rect x="114" y="116" width="52" height="5.5" rx="2.75" fill="#BBAE94"/>
+
+      <rect x="114" y="152" width="104" height="7" rx="3.5" fill="#B4A992"/>
+      <rect x="114" y="168" width="56" height="5.5" rx="2.75" fill="#D5CBB8"/>
+
+      <rect x="114" y="192" width="88" height="7" rx="3.5" fill="#B4A992"/>
+      <rect x="114" y="208" width="62" height="5.5" rx="2.75" fill="#D5CBB8"/>
+    </g>
+
+    <!-- content pane -->
+    <g id="content-pane">
+      <!-- Edit | View segmented control -->
+      <g transform="translate(362 48)">
+        <rect x="0" y="0" width="104" height="26" rx="7" fill="none" stroke="#E0D5C2" stroke-width="1.5"/>
+        <rect x="2" y="2" width="50" height="22" rx="5.5" fill="#EFE3CD"/>
+        <text x="27" y="17.5" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+              font-size="14" font-weight="600" fill="#4A443A">Edit</text>
+        <text x="78" y="17.5" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+              font-size="14" fill="#97907F">View</text>
+      </g>
+
+      <!-- memo: graphite strokes with terracotta intent mark -->
+      <g transform="translate(268 108)" stroke="#4E483F" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+        <path d="M0 8 c 7 -8, 12 2, 20 -4 c 6 -4, 11 3, 19 -2 l 118 -9"/>
+        <path d="M4 46 c 7 -8, 12 2, 20 -4 c 6 -4, 11 3, 19 -2 l 100 -8"/>
+        <path d="M14 92 c 6 -7, 11 2, 18 -3 l 74 -7"/>
+      </g>
+      <path d="M400 186 C 386 164, 296 164, 274 186 C 258 202, 296 222, 348 218 C 388 215, 410 200, 402 190"
+            fill="none" stroke="#C1734B" stroke-width="4.5" stroke-linecap="round"/>
+    </g>
+
+    <!-- caption -->
+    <text x="242" y="292" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, monospace"
+          font-size="18" fill="#97907F">⌘1 folders  ·  ⌘2 content only</text>
+  </g>
+</svg>
