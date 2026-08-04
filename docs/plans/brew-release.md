@@ -41,7 +41,7 @@
 
 ## Task 의존 관계
 
-```
+```text
 Task 1 (distribution 계약 + pre-merge CI) ─┐
 Task 2 (README 확정)      ─┴→ Task 3 (main 병합) ─→ Task 6 (태그→draft 빌드) ─→ Task 7 (publish→bump) ─→ Task 8 (brew E2E) ─→ Task 9 (문서 마무리)
 Task 4 (TAP_GITHUB_TOKEN) ──────────────────────────→ Task 7 전 필수
@@ -228,7 +228,7 @@ git commit -m "ci: add pre-merge release validation"
 77행 문단을 다음으로 교체:
 
 ```markdown
-The first Intent Memo release is `v0.1.0`. The legacy PromptPad releases and `v0.1.x` tags are deleted from this repository before tagging, so the greenfield `0.1.0` line starts clean. The sources already carry `0.1.0`; tag the first release directly without running `pnpm release`. From the second release on, use `pnpm release patch|minor|major`.
+The first Intent Memo release is `v0.1.0`. The legacy PromptPad releases and `v0.1.x` tags are deleted from this repository before tagging, so the greenfield `0.1.0` line starts clean. The sources already carry `0.1.0`; tag the first release directly without running `pnpm release`. From the second release on, use `pnpm release patch`, `pnpm release minor`, or `pnpm release major`.
 ```
 
 - [x] **Step 2: README.ko.md Release 문단 교체**
@@ -238,7 +238,7 @@ The first Intent Memo release is `v0.1.0`. The legacy PromptPad releases and `v0
 79행 문단 교체:
 
 ```markdown
-첫 Intent Memo 릴리스는 `v0.1.0`입니다. 태그 생성 전에 기존 PromptPad 릴리스와 `v0.1.x` 태그를 저장소에서 삭제해 greenfield `0.1.0` 라인을 깨끗하게 시작합니다. 소스는 이미 `0.1.0`이므로 첫 릴리스는 `pnpm release` 없이 태그를 직접 생성하고, 두 번째 릴리스부터 `pnpm release patch|minor|major`를 사용합니다.
+첫 Intent Memo 릴리스는 `v0.1.0`입니다. 태그 생성 전에 기존 PromptPad 릴리스와 `v0.1.x` 태그를 저장소에서 삭제해 greenfield `0.1.0` 라인을 깨끗하게 시작합니다. 소스는 이미 `0.1.0`이므로 첫 릴리스는 `pnpm release` 없이 태그를 직접 생성하고, 두 번째 릴리스부터 `pnpm release patch`, `pnpm release minor`, `pnpm release major` 중 하나를 사용합니다.
 ```
 
 - [x] **Step 3: 검증**
@@ -343,7 +343,9 @@ git push origin --delete v0.1.1 v0.1.2 v0.1.3
 - [ ] **Step 3: 로컬 태그 정리**
 
 ```bash
-git tag -l "v0.1.*" | xargs -r git tag -d
+while IFS= read -r tag; do
+  git tag -d "$tag"
+done < <(git tag -l "v0.1.*")
 git fetch origin --prune --prune-tags
 ```
 

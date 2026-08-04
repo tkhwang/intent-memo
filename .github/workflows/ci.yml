@@ -13,6 +13,8 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: ./.github/actions/setup-macos-build
         with:
           rust-targets: aarch64-apple-darwin
@@ -47,5 +49,6 @@ jobs:
       - name: Unsigned Tauri package smoke
         run: |
           pnpm tauri build --target aarch64-apple-darwin --config '{"bundle":{"createUpdaterArtifacts":false}}'
+          APP_VERSION=$(python3 -c "import json; print(json.load(open('src-tauri/tauri.conf.json'))['version'])")
           test -d "src-tauri/target/aarch64-apple-darwin/release/bundle/macos/IntentMemo.app"
-          test -f "src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/IntentMemo_0.1.0_aarch64.dmg"
+          test -f "src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/IntentMemo_${APP_VERSION}_aarch64.dmg"
