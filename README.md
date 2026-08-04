@@ -74,7 +74,7 @@ pnpm tauri:build
 
 ## Release
 
-The version and tag for the first Intent Memo release are not decided yet. Because they would collide with the previous PromptPad `v0.1.x` tags, we do not run `pnpm release patch` at the current `0.1.0`.
+The first Intent Memo release is `v0.1.0`. The legacy PromptPad releases and `v0.1.x` tags are deleted from this repository before tagging, so the greenfield `0.1.0` line starts clean. The sources already carry `0.1.0`; tag the first release directly without running `pnpm release`. From the second release on, use `pnpm release patch`, `pnpm release minor`, or `pnpm release major`.
 
 A `v*` tag triggers the signed macOS release workflow. Publishing the draft release triggers `.github/workflows/homebrew-bump.yml`, which renders `distribution/homebrew/intent-memo.rb` with release checksums and updates `tkhwang/homebrew-tap`. The repository secret `TAP_GITHUB_TOKEN` must have Contents write access to that tap.
 
