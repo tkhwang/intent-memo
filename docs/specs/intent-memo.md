@@ -149,8 +149,8 @@ v0.1은 이 dual-folder UI와 Human/AI mode를 구현하지 않는다. 현재의
 ## 10. 배포 계약
 
 - macOS Tauri app은 기존 signing·notarization workflow를 단일 앱 경로에 맞게 유지한다.
-- release artifact와 Homebrew cask 이름은 `intent-memo`를 사용한다.
-- Homebrew cask는 `auto_updates true`를 선언하고 사용자 library나 앱 데이터는 `zap`으로 삭제하지 않는다.
+- macOS app과 release artifact basename은 `IntentMemo`, repo/package/Homebrew cask token은 `intent-memo`, 사용자-facing 브랜드는 `Intent Memo`를 사용한다.
+- v0.1 업데이트는 Homebrew가 관리하므로 cask는 `auto_updates`를 선언하지 않는다. 사용자 library와 앱 데이터 보존을 위해 `zap` stanza를 정의하지 않는다. In-app updater는 후속 범위다.
 - `release: published` 이후 tap update workflow가 실행되도록 구성한다.
 - 원격 tap 수정, repository secret 등록, 실제 release 발행은 자격증명이 필요한 배포 작업으로 로컬 구현과 분리한다.
 
@@ -162,4 +162,3 @@ v0.1은 이 dual-folder UI와 Human/AI mode를 구현하지 않는다. 현재의
 - Tauri production build 통과
 - 실제 앱에서 첫 library 선택, root/nested CRUD, rename/move collision, external-change conflict, autosave, Edit/View, pane 단축키, 재시작 복원 확인
 - OS light/dark 각각에서 3-pane, content-only, empty/error 상태의 가독성과 한글 조판 확인
-

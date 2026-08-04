@@ -108,7 +108,7 @@ jobs:
         env:
           BUILD_NUMBER: ${{ inputs.build_number || github.run_number }}
         run: |
-          APP_PATH="src-tauri/target/universal-apple-darwin/release/bundle/macos/Intent Memo.app"
+          APP_PATH="src-tauri/target/universal-apple-darwin/release/bundle/macos/IntentMemo.app"
           VERSION=$(python3 -c "import json; print(json.load(open('src-tauri/tauri.conf.json'))['version'])")
 
           echo "App version: $VERSION"
@@ -191,7 +191,7 @@ jobs:
             exit 1
           fi
 
-          PKG_PATH="$RUNNER_TEMP/Intent-Memo_${APP_VERSION}_${BUILD_NUMBER}.pkg"
+          PKG_PATH="$RUNNER_TEMP/IntentMemo_${APP_VERSION}_${BUILD_NUMBER}.pkg"
 
           productbuild \
             --component "$APP_PATH" /Applications \
@@ -246,7 +246,7 @@ jobs:
       - name: Upload .pkg artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Intent-Memo-MAS-${{ inputs.build_number || github.run_number }}
+          name: IntentMemo-MAS-${{ inputs.build_number || github.run_number }}
           path: ${{ env.PKG_PATH }}
           retention-days: 30
 
