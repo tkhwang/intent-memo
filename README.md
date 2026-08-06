@@ -28,13 +28,15 @@ Intent Memo pivoted from PromptPad, a tool for composing and copying finished AI
 - On top of that, it gradually adds writing conveniences that help make intent concrete — purpose, background, constraints, and completion criteria.
 - AI features will be considered only in later versions, as a derived layer that never replaces what a human wrote.
 
-## v0.1
+## v0.2
 
-- A single Markdown library with folders of arbitrary depth
+- Two distinct read-write Markdown spaces: **Intent** for your purpose and **Docs** for reference material
+- Independent local roots for each space, with a visible left-pane switcher and compact fallback when the pane is hidden
+- Multiple document tabs with space-specific session restore and per-tab `Edit` / rendered `View` mode
 - Create, rename, and move documents and folders; delete to the system Trash
+- Keyboard-accessible context menus for rename, move, and Trash actions
 - CodeMirror 6 Markdown syntax highlighting
-- 500 ms autosave, atomic writes, external-change conflict protection
-- `Edit` / rendered `View` of the same document
+- Per-document 500 ms autosave, atomic writes, external-change conflict protection, and save barriers before space switch or app close
 - `⌘1` folder pane toggle, `⌘2` content-only mode
 - OS light/dark and fixed CJK typography
 
@@ -42,7 +44,7 @@ Search, tags, a Markdown toolbar, images, wiki/backlinks, an LLM runtime, and AI
 
 ## Data
 
-On first run you pick a `libraryRoot`. The filename is the source of truth for a document's title, and new documents start with minimal frontmatter and an empty body.
+On first run you pick the Intent `libraryRoot`; the Docs `docsRoot` is chosen when you first enter Docs. The filename is the source of truth for a document's title, and new documents start with minimal frontmatter and an empty body.
 
 ```markdown
 ---

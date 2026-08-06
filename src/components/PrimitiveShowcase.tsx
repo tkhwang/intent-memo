@@ -1,7 +1,26 @@
 import { FileText, Folder, Plus, Trash2 } from "lucide-react";
+import { useEffect, useRef } from "react";
+import { ContextMenu } from "@/components/ContextMenu";
 import { MarkdownView } from "@/components/MarkdownView";
+import { SpaceSwitcher } from "@/components/SpaceSwitcher";
+import { TabBar } from "@/components/TabBar";
 
 export function PrimitiveShowcase() {
+  const menuTriggerRef = useRef<HTMLButtonElement | null>(null);
+
+  useEffect(() => {
+    const trigger = menuTriggerRef.current;
+    if (!trigger) return;
+    const bounds = trigger.getBoundingClientRect();
+    trigger.dispatchEvent(
+      new MouseEvent("contextmenu", {
+        bubbles: true,
+        clientX: bounds.left + 8,
+        clientY: bounds.bottom + 4,
+      }),
+    );
+  }, []);
+
   return (
     <main className="showcase">
       <header className="showcase-header">
@@ -64,6 +83,59 @@ export function PrimitiveShowcase() {
           </button>
         </article>
         <article className="showcase-card">
+          <h2>Spaces</h2>
+          <SpaceSwitcher activeSpace="intent" onChange={async () => {}} />
+          <div className="showcase-row">
+            <SpaceSwitcher
+              activeSpace="docs"
+              compact
+              onChange={async () => {}}
+            />
+          </div>
+        </article>
+        <article className="showcase-card">
+          <h2>Tabs</h2>
+          <TabBar
+            activePath="intent.md"
+            documents={[
+              showcaseDocument("intent.md", "Intent", "dirty"),
+              showcaseDocument("reference.md", "Reference", "error"),
+            ]}
+            onClose={async () => {}}
+            onSelect={() => {}}
+          />
+        </article>
+        <article className="showcase-card">
+          <h2>Context menu</h2>
+          <ContextMenu
+            items={[
+              { id: "rename", label: "Rename…", onSelect: () => {} },
+              { id: "move", label: "Move…", onSelect: () => {} },
+              {
+                id: "trash",
+                label: "Move to Trash",
+                danger: true,
+                onSelect: () => {},
+              },
+            ]}
+            label="Showcase menu"
+          >
+            {(triggerProps) => (
+              <button
+                className="text-button"
+                type="button"
+                {...triggerProps}
+                ref={(element) => {
+                  triggerProps.ref(element);
+                  menuTriggerRef.current = element;
+                }}
+              >
+                우클릭 또는 ⇧F10
+              </button>
+            )}
+          </ContextMenu>
+        </article>
+        <article className="showcase-card">
           <h2>Notice</h2>
           <div className="inline-notice" role="alert">
             <span>파일이 외부에서 변경되어 자동 저장하지 않았습니다.</span>
@@ -88,4 +160,21 @@ export function PrimitiveShowcase() {
       </section>
     </main>
   );
+}
+
+function showcaseDocument(
+  path: string,
+  title: string,
+  saveStatus: "dirty" | "error",
+) {
+  return {
+    path,
+    title,
+    created: "2026-08-05T00:00:00.000Z",
+    updated: "2026-08-05T00:00:00.000Z",
+    body: "",
+    mtimeMs: 1,
+    mode: "edit" as const,
+    saveStatus,
+  };
 }

@@ -2,7 +2,7 @@
 
 ## Product Contract
 
-Intent Memo is a greenfield Tauri desktop Markdown editor for human-authored intentions. The selected `libraryRoot` is canonical source data. Do not add migration adapters for the former PromptPad product. LLM runtime, AI-managed folders, search, tags, toolbar, images, and wiki features are outside v0.1.
+Intent Memo is a greenfield Tauri desktop Markdown editor for human-authored intentions. The selected `libraryRoot` remains canonical Intent source data; optional `docsRoot` is a separate user-selected read-write reference-document space. Do not add migration adapters for the former PromptPad product. LLM runtime, automatically managed AI folders, search, tags, toolbar, images, and wiki features are outside v0.2.
 
 Read `docs/specs/intent-memo.md` and `DESIGN.md` before changing product behavior or UI.
 
@@ -23,24 +23,28 @@ cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets --all-features -
 ```text
 src/
 ├── App.tsx                         # onboarding + 3-pane workspace orchestration
-├── components/                     # folder, document, editor, view, dialogs
+├── components/                     # folder, document, editor, view, space/tab/menu primitives, dialogs
 ├── hooks/useLibraryWorkspace.ts    # workspace state and autosave boundary
 ├── lib/markdown.ts                 # canonical frontmatter parse/serialize
 ├── lib/native.ts                   # validated Tauri IPC adapter
-└── lib/settings.ts                 # libraryRoot + pane layout persistence
+└── lib/settings.ts                 # roots + active space/tab + pane layout persistence
 src-tauri/src/
 ├── lib.rs                          # Tauri plugins and command registration
 └── library.rs                      # recursive filesystem model and safety rules
 ```
 
-The filesystem is the database. Filenames are document titles. Frontmatter contains only immutable `created` and save-updated `updated`. Native writes use a same-directory temporary file and mtime conflict detection. All paths must remain canonicalized inside `libraryRoot`; hidden paths and symlink traversal stay excluded. Delete actions use system Trash.
+The filesystem is the database. Filenames are document titles. Frontmatter contains only immutable `created` and save-updated `updated`. Native writes use a same-directory temporary file and mtime conflict detection. All paths must remain canonicalized inside the active root (`libraryRoot` or `docsRoot`); hidden paths and symlink traversal stay excluded. Delete actions use system Trash.
 
 ## UI Contract
 
-- Three panes: folders, documents, content.
-- The content pane is `Edit | View`; no hybrid preview or toolbar.
+- Three panes: folders, documents, content, with `Intent | Docs` space switching in the folder pane.
+- Intent uses existing `libraryRoot`; Docs uses optional `docsRoot`. Both are read-write and use `Edit | View`; Intent opens in Edit and Docs in View.
+- The content pane has a one-line per-space tab bar; no hybrid preview or toolbar.
+- Rename, move, and Trash live in keyboard-accessible document/folder context menus.
+- When the folder pane is hidden, the content header retains a compact icon+label space toggle.
+- One layout button cycles three panes, two panes, and content-only; the folder pane lists both configurable base folders and the compact header keeps the active root visible.
 - `⌘1` toggles folders while the list is visible; `⌘2` toggles list plus folders.
-- OS color mode and product typography are fixed; only library location is configurable.
+- OS color mode and product typography are fixed; only Intent and Docs locations are configurable.
 - Reuse tokens and primitives from `DESIGN.md`. The development showcase is `?showcase=1`.
 
 ## Change Rules

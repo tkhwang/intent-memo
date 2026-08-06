@@ -15,26 +15,73 @@ import {
   scanLibrary,
   trashEntry,
 } from "@/lib/native";
-import type { LibrarySnapshot, OpenDocument } from "@/types/library";
+import type {
+  EditorMode,
+  LibrarySnapshot,
+  OpenDocument,
+  TabSession,
+} from "@/types/library";
 
 const emptySnapshot: LibrarySnapshot = { folders: [], documents: [] };
 
 export type SaveStatus = "idle" | "dirty" | "saving" | "saved" | "error";
 
-export function useLibraryWorkspace(root: string) {
+export type WorkspaceDocument = OpenDocument & {
+  readonly mode: EditorMode;
+  readonly saveStatus: SaveStatus;
+};
+
+type InternalDocument = WorkspaceDocument & {
+  readonly dirty: boolean;
+  readonly revision: number;
+};
+
+type WorkspaceOptions = {
+  readonly defaultMode: EditorMode;
+  readonly initialSession?: TabSession;
+  readonly onSessionChange?: (session: TabSession) => void;
+};
+
+const defaultSession: TabSession = { paths: [], activePath: null };
+
+export async function runCloseBarrier(
+  persistAll: () => Promise<boolean>,
+  destroyWindow: () => Promise<void>,
+): Promise<boolean> {
+  if (!(await persistAll())) return false;
+  await destroyWindow();
+  return true;
+}
+
+export function useLibraryWorkspace(
+  root: string,
+  options: WorkspaceOptions = { defaultMode: "edit" },
+) {
   const [snapshot, setSnapshot] = useState<LibrarySnapshot>(emptySnapshot);
   const [selectedFolder, setSelectedFolderState] = useState("");
-  const [activeDocument, setActiveDocument] = useState<OpenDocument | null>(
-    null,
+  const [documents, setDocuments] = useState<Map<string, InternalDocument>>(
+    new Map(),
   );
+  const [activePath, setActivePathState] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
-  const activeRef = useRef(activeDocument);
-  const dirtyRef = useRef(false);
-  const revisionRef = useRef(0);
-  const savePromiseRef = useRef<Promise<boolean> | null>(null);
-  activeRef.current = activeDocument;
+  const documentsRef = useRef(documents);
+  const activePathRef = useRef(activePath);
+  const savePromisesRef = useRef(new Map<string, Promise<boolean>>());
+  const defaultModeRef = useRef(options.defaultMode);
+  const initialSessionRef = useRef(options.initialSession ?? defaultSession);
+  const onSessionChangeRef = useRef(options.onSessionChange);
+  onSessionChangeRef.current = options.onSessionChange;
+
+  const commitDocuments = useCallback((next: Map<string, InternalDocument>) => {
+    documentsRef.current = next;
+    setDocuments(next);
+  }, []);
+
+  const setActivePath = useCallback((path: string | null) => {
+    activePathRef.current = path;
+    setActivePathState(path);
+  }, []);
 
   const refresh = useCallback(async () => {
     try {
@@ -54,112 +101,243 @@ export function useLibraryWorkspace(root: string) {
     } catch (cause) {
       setErrorMessage(messageFrom(cause));
       return null;
-    } finally {
-      setLoading(false);
     }
   }, [root]);
 
   useEffect(() => {
+    let cancelled = false;
     setSnapshot(emptySnapshot);
     setSelectedFolderState("");
-    setActiveDocument(null);
+    commitDocuments(new Map());
+    setActivePath(null);
     setLoading(true);
-    dirtyRef.current = false;
-    revisionRef.current = 0;
-    setSaveStatus("idle");
-    void refresh();
-  }, [refresh]);
+    setErrorMessage(null);
+    savePromisesRef.current.clear();
 
-  const persistCurrent = useCallback(async (): Promise<boolean> => {
-    if (savePromiseRef.current) {
-      const previousSaved = await savePromiseRef.current;
-      if (!previousSaved || !dirtyRef.current) return previousSaved;
-    }
+    const restore = async () => {
+      const nextSnapshot = await refresh();
+      if (!nextSnapshot || cancelled) {
+        if (!cancelled) setLoading(false);
+        return;
+      }
+      const existingPaths = new Set(
+        nextSnapshot.documents.map((document) => document.path),
+      );
+      const paths = initialSessionRef.current.paths.filter((path) =>
+        existingPaths.has(path),
+      );
+      const restored = await Promise.all(
+        paths.map(async (path) => {
+          try {
+            const payload = await readDocument(root, path);
+            return toInternalDocument(
+              payload.path,
+              payload.mtimeMs,
+              parseMarkdown(payload.content),
+              defaultModeRef.current,
+            );
+          } catch {
+            return null;
+          }
+        }),
+      );
+      if (cancelled) return;
+      const nextDocuments = new Map<string, InternalDocument>();
+      for (const document of restored) {
+        if (document) nextDocuments.set(document.path, document);
+      }
+      commitDocuments(nextDocuments);
+      const requestedActive = initialSessionRef.current.activePath;
+      setActivePath(
+        requestedActive && nextDocuments.has(requestedActive)
+          ? requestedActive
+          : (nextDocuments.keys().next().value ?? null),
+      );
+      setLoading(false);
+    };
 
-    const current = activeRef.current;
-    if (!current || !dirtyRef.current) return true;
-    const revision = revisionRef.current;
-    const timestamp = new Date().toISOString();
-    const markdown = withUpdatedBody(current, current.body, timestamp);
-    setSaveStatus("saving");
-
-    const savePromise = saveDocument(
-      root,
-      current.path,
-      serializeMarkdown(markdown),
-      current.mtimeMs,
-    )
-      .then((payload) => {
-        const parsed = parseMarkdown(payload.content);
-        setActiveDocument((latest) => {
-          if (!latest || latest.path !== current.path) return latest;
-          return {
-            ...latest,
-            created: parsed.created,
-            updated: parsed.updated,
-            mtimeMs: payload.mtimeMs,
-          };
-        });
-        if (revisionRef.current === revision) {
-          dirtyRef.current = false;
-          setSaveStatus("saved");
-        } else {
-          setSaveStatus("dirty");
-        }
-        setErrorMessage(null);
-        return true;
-      })
-      .catch((cause: unknown) => {
-        setSaveStatus("error");
-        setErrorMessage(messageFrom(cause));
-        return false;
-      })
-      .finally(() => {
-        savePromiseRef.current = null;
-      });
-
-    savePromiseRef.current = savePromise;
-    return await savePromise;
-  }, [root]);
+    void restore();
+    return () => {
+      cancelled = true;
+    };
+  }, [commitDocuments, refresh, root, setActivePath]);
 
   useEffect(() => {
-    if (saveStatus !== "dirty") return;
+    if (loading) return;
+    onSessionChangeRef.current?.({
+      paths: [...documents.keys()],
+      activePath,
+    });
+  }, [activePath, documents, loading]);
+
+  const updateDocument = useCallback(
+    (path: string, update: (current: InternalDocument) => InternalDocument) => {
+      const current = documentsRef.current.get(path);
+      if (!current) return;
+      const next = new Map(documentsRef.current);
+      next.set(path, update(current));
+      commitDocuments(next);
+    },
+    [commitDocuments],
+  );
+
+  const persistDocument = useCallback(
+    async (path: string): Promise<boolean> => {
+      const pending = savePromisesRef.current.get(path);
+      if (pending) {
+        const saved = await pending;
+        const latest = documentsRef.current.get(path);
+        if (!saved || !latest?.dirty) return saved;
+      }
+
+      const current = documentsRef.current.get(path);
+      if (!current || !current.dirty) return true;
+      const timestamp = new Date().toISOString();
+      const markdown = withUpdatedBody(current, current.body, timestamp);
+      updateDocument(path, (latest) => ({ ...latest, saveStatus: "saving" }));
+
+      const savePromise = saveDocument(
+        root,
+        path,
+        serializeMarkdown(markdown),
+        current.mtimeMs,
+      )
+        .then((payload) => {
+          const parsed = parseMarkdown(payload.content);
+          updateDocument(path, (latest) => {
+            const unchanged = latest.revision === current.revision;
+            return {
+              ...latest,
+              created: parsed.created,
+              updated: parsed.updated,
+              mtimeMs: payload.mtimeMs,
+              dirty: !unchanged,
+              saveStatus: unchanged ? "saved" : "dirty",
+            };
+          });
+          setErrorMessage(null);
+          return true;
+        })
+        .catch((cause: unknown) => {
+          updateDocument(path, (latest) => ({
+            ...latest,
+            saveStatus: "error",
+          }));
+          setErrorMessage(messageFrom(cause));
+          return false;
+        })
+        .finally(() => {
+          if (savePromisesRef.current.get(path) === savePromise) {
+            savePromisesRef.current.delete(path);
+          }
+        });
+
+      savePromisesRef.current.set(path, savePromise);
+      return await savePromise;
+    },
+    [root, updateDocument],
+  );
+
+  const persistAllOpenDocuments = useCallback(async (): Promise<boolean> => {
+    const paths = [...documentsRef.current.keys()];
+    const results = await Promise.all(paths.map(persistDocument));
+    return results.every(Boolean);
+  }, [persistDocument]);
+
+  useEffect(() => {
+    const dirtyPaths = [...documents.values()]
+      .filter((document) => document.dirty && document.saveStatus === "dirty")
+      .map((document) => document.path);
+    if (dirtyPaths.length === 0) return;
     const timer = window.setTimeout(() => {
-      void persistCurrent();
+      for (const path of dirtyPaths) void persistDocument(path);
     }, 500);
     return () => window.clearTimeout(timer);
-  }, [persistCurrent, saveStatus]);
+  }, [documents, persistDocument]);
+
+  const setActiveDocument = useCallback(
+    (path: string) => {
+      if (!documentsRef.current.has(path) || activePathRef.current === path)
+        return;
+      const previous = activePathRef.current;
+      setActivePath(path);
+      if (previous) void persistDocument(previous);
+    },
+    [persistDocument, setActivePath],
+  );
 
   const openDocument = useCallback(
     async (path: string) => {
-      if (!(await persistCurrent())) return;
+      if (documentsRef.current.has(path)) {
+        setActiveDocument(path);
+        return true;
+      }
       try {
         const payload = await readDocument(root, path);
-        const parsed = parseMarkdown(payload.content);
-        const opened = toOpenDocument(payload.path, payload.mtimeMs, parsed);
-        setActiveDocument(opened);
-        activeRef.current = opened;
-        dirtyRef.current = false;
-        revisionRef.current += 1;
-        setSaveStatus("idle");
+        const opened = toInternalDocument(
+          payload.path,
+          payload.mtimeMs,
+          parseMarkdown(payload.content),
+          defaultModeRef.current,
+        );
+        const next = new Map(documentsRef.current);
+        next.set(opened.path, opened);
+        commitDocuments(next);
+        const previous = activePathRef.current;
+        setActivePath(opened.path);
+        if (previous) void persistDocument(previous);
         setErrorMessage(null);
+        return true;
       } catch (cause) {
         setErrorMessage(messageFrom(cause));
+        return false;
       }
     },
-    [persistCurrent, root],
+    [commitDocuments, persistDocument, root, setActiveDocument, setActivePath],
   );
 
-  const updateBody = useCallback((body: string) => {
-    revisionRef.current += 1;
-    dirtyRef.current = true;
-    setSaveStatus("dirty");
-    setActiveDocument((current) => (current ? { ...current, body } : current));
-  }, []);
+  const closeDocument = useCallback(
+    async (path: string): Promise<boolean> => {
+      if (!(await persistDocument(path))) return false;
+      const paths = [...documentsRef.current.keys()];
+      const index = paths.indexOf(path);
+      const next = new Map(documentsRef.current);
+      next.delete(path);
+      commitDocuments(next);
+      if (activePathRef.current === path) {
+        setActivePath(paths[index + 1] ?? paths[index - 1] ?? null);
+      }
+      return true;
+    },
+    [commitDocuments, persistDocument, setActivePath],
+  );
+
+  const updateBody = useCallback(
+    (body: string) => {
+      const path = activePathRef.current;
+      if (!path) return;
+      updateDocument(path, (current) => ({
+        ...current,
+        body,
+        dirty: true,
+        revision: current.revision + 1,
+        saveStatus: "dirty",
+      }));
+    },
+    [updateDocument],
+  );
+
+  const setMode = useCallback(
+    (mode: EditorMode) => {
+      const path = activePathRef.current;
+      if (!path) return;
+      updateDocument(path, (current) => ({ ...current, mode }));
+    },
+    [updateDocument],
+  );
 
   const addDocument = useCallback(
     async (title: string) => {
-      if (!(await persistCurrent())) return;
       const timestamp = new Date().toISOString();
       try {
         const payload = await createDocument(
@@ -173,19 +351,31 @@ export function useLibraryWorkspace(root: string) {
           }),
         );
         await refresh();
-        const parsed = parseMarkdown(payload.content);
-        const opened = toOpenDocument(payload.path, payload.mtimeMs, parsed);
-        setActiveDocument(opened);
-        activeRef.current = opened;
-        dirtyRef.current = false;
-        revisionRef.current += 1;
-        setSaveStatus("idle");
+        const opened = toInternalDocument(
+          payload.path,
+          payload.mtimeMs,
+          parseMarkdown(payload.content),
+          defaultModeRef.current,
+        );
+        const next = new Map(documentsRef.current);
+        next.set(opened.path, opened);
+        commitDocuments(next);
+        const previous = activePathRef.current;
+        setActivePath(opened.path);
+        if (previous) void persistDocument(previous);
         setErrorMessage(null);
       } catch (cause) {
         setErrorMessage(messageFrom(cause));
       }
     },
-    [persistCurrent, refresh, root, selectedFolder],
+    [
+      commitDocuments,
+      persistDocument,
+      refresh,
+      root,
+      selectedFolder,
+      setActivePath,
+    ],
   );
 
   const addFolder = useCallback(
@@ -203,132 +393,180 @@ export function useLibraryWorkspace(root: string) {
 
   const renameActive = useCallback(
     async (title: string) => {
-      const current = activeRef.current;
+      const path = activePathRef.current;
+      if (!path || !(await persistDocument(path))) return;
+      const current = documentsRef.current.get(path);
       if (!current) return;
       const timestamp = new Date().toISOString();
       try {
         const payload = await renameDocument(
           root,
-          current.path,
+          path,
           title,
           serializeMarkdown(withUpdatedBody(current, current.body, timestamp)),
           current.mtimeMs,
         );
-        const parsed = parseMarkdown(payload.content);
-        const opened = toOpenDocument(payload.path, payload.mtimeMs, parsed);
-        setActiveDocument(opened);
-        activeRef.current = opened;
-        dirtyRef.current = false;
-        revisionRef.current += 1;
-        setSaveStatus("saved");
+        const renamed = {
+          ...toInternalDocument(
+            payload.path,
+            payload.mtimeMs,
+            parseMarkdown(payload.content),
+            current.mode,
+          ),
+          saveStatus: "saved" as const,
+        };
+        replaceDocumentPath(
+          path,
+          renamed,
+          documentsRef.current,
+          commitDocuments,
+        );
+        setActivePath(renamed.path);
         await refresh();
         setErrorMessage(null);
       } catch (cause) {
-        setSaveStatus("error");
+        updateDocument(path, (latest) => ({ ...latest, saveStatus: "error" }));
         setErrorMessage(messageFrom(cause));
       }
     },
-    [refresh, root],
+    [
+      commitDocuments,
+      persistDocument,
+      refresh,
+      root,
+      setActivePath,
+      updateDocument,
+    ],
   );
 
-  const renameSelectedFolder = useCallback(
-    async (name: string) => {
-      if (selectedFolder === "" || !(await persistCurrent())) return;
+  const renameFolderAt = useCallback(
+    async (path: string, name: string) => {
+      if (path === "" || !(await persistAllOpenDocuments())) return;
       try {
-        const mutation = await renameFolder(root, selectedFolder, name);
-        const current = activeRef.current;
+        const mutation = await renameFolder(root, path, name);
+        rebaseDocuments(
+          path,
+          mutation.path,
+          documentsRef.current,
+          commitDocuments,
+        );
         setSelectedFolderState(mutation.path);
-        await refresh();
-        if (current && isWithin(current.path, selectedFolder)) {
-          await openDocument(
-            rebasePath(current.path, selectedFolder, mutation.path),
-          );
+        if (activePathRef.current && isWithin(activePathRef.current, path)) {
+          setActivePath(rebasePath(activePathRef.current, path, mutation.path));
         }
+        await refresh();
         setErrorMessage(null);
       } catch (cause) {
         setErrorMessage(messageFrom(cause));
       }
     },
-    [openDocument, persistCurrent, refresh, root, selectedFolder],
+    [commitDocuments, persistAllOpenDocuments, refresh, root, setActivePath],
   );
 
   const moveActive = useCallback(
     async (destination: string) => {
-      const current = activeRef.current;
-      if (!current || !(await persistCurrent())) return;
+      const path = activePathRef.current;
+      if (!path || !(await persistDocument(path))) return;
       try {
-        const mutation = await moveEntry(root, current.path, destination);
-        await refresh();
-        await openDocument(mutation.path);
+        const mutation = await moveEntry(root, path, destination);
+        const current = documentsRef.current.get(path);
+        if (current) {
+          replaceDocumentPath(
+            path,
+            { ...current, path: mutation.path },
+            documentsRef.current,
+            commitDocuments,
+          );
+          setActivePath(mutation.path);
+        }
         setSelectedFolderState(destination);
+        await refresh();
         setErrorMessage(null);
       } catch (cause) {
         setErrorMessage(messageFrom(cause));
       }
     },
-    [openDocument, persistCurrent, refresh, root],
+    [commitDocuments, persistDocument, refresh, root, setActivePath],
   );
 
-  const moveSelectedFolder = useCallback(
-    async (destination: string) => {
-      if (selectedFolder === "" || !(await persistCurrent())) return;
+  const moveFolderAt = useCallback(
+    async (path: string, destination: string) => {
+      if (path === "" || !(await persistAllOpenDocuments())) return;
       try {
-        const current = activeRef.current;
-        const mutation = await moveEntry(root, selectedFolder, destination);
-        await refresh();
-        setSelectedFolderState(mutation.path);
-        if (current && isWithin(current.path, selectedFolder)) {
-          await openDocument(
-            rebasePath(current.path, selectedFolder, mutation.path),
-          );
+        const mutation = await moveEntry(root, path, destination);
+        rebaseDocuments(
+          path,
+          mutation.path,
+          documentsRef.current,
+          commitDocuments,
+        );
+        if (activePathRef.current && isWithin(activePathRef.current, path)) {
+          setActivePath(rebasePath(activePathRef.current, path, mutation.path));
         }
+        setSelectedFolderState(mutation.path);
+        await refresh();
         setErrorMessage(null);
       } catch (cause) {
         setErrorMessage(messageFrom(cause));
       }
     },
-    [openDocument, persistCurrent, refresh, root, selectedFolder],
+    [commitDocuments, persistAllOpenDocuments, refresh, root, setActivePath],
   );
 
   const removeActive = useCallback(async () => {
-    const current = activeRef.current;
-    if (!current) return;
+    const path = activePathRef.current;
+    if (!path) return;
     try {
-      await trashEntry(root, current.path);
-      setActiveDocument(null);
-      activeRef.current = null;
-      dirtyRef.current = false;
-      setSaveStatus("idle");
+      await trashEntry(root, path);
+      const paths = [...documentsRef.current.keys()];
+      const index = paths.indexOf(path);
+      const next = new Map(documentsRef.current);
+      next.delete(path);
+      commitDocuments(next);
+      setActivePath(paths[index + 1] ?? paths[index - 1] ?? null);
       await refresh();
       setErrorMessage(null);
     } catch (cause) {
       setErrorMessage(messageFrom(cause));
     }
-  }, [refresh, root]);
+  }, [commitDocuments, refresh, root, setActivePath]);
 
-  const removeSelectedFolder = useCallback(async () => {
-    if (selectedFolder === "") return;
-    try {
-      await trashEntry(root, selectedFolder);
-      const current = activeRef.current;
-      if (current && isWithin(current.path, selectedFolder)) {
-        setActiveDocument(null);
-        activeRef.current = null;
-        dirtyRef.current = false;
-        setSaveStatus("idle");
+  const removeFolderAt = useCallback(
+    async (path: string) => {
+      if (path === "") return;
+      try {
+        await trashEntry(root, path);
+        const next = new Map(
+          [...documentsRef.current].filter(
+            ([documentPath]) => !isWithin(documentPath, path),
+          ),
+        );
+        commitDocuments(next);
+        if (activePathRef.current && isWithin(activePathRef.current, path)) {
+          setActivePath(next.keys().next().value ?? null);
+        }
+        setSelectedFolderState("");
+        await refresh();
+        setErrorMessage(null);
+      } catch (cause) {
+        setErrorMessage(messageFrom(cause));
       }
-      setSelectedFolderState("");
-      await refresh();
-      setErrorMessage(null);
-    } catch (cause) {
-      setErrorMessage(messageFrom(cause));
-    }
-  }, [refresh, root, selectedFolder]);
+    },
+    [commitDocuments, refresh, root, setActivePath],
+  );
 
-  const setSelectedFolder = useCallback((path: string) => {
-    setSelectedFolderState(path);
-  }, []);
-
+  const openDocuments = useMemo<readonly WorkspaceDocument[]>(
+    () =>
+      [...documents.values()].map(({ dirty, revision, ...document }) => {
+        void dirty;
+        void revision;
+        return document;
+      }),
+    [documents],
+  );
+  const activeDocument = activePath
+    ? (openDocuments.find((document) => document.path === activePath) ?? null)
+    : null;
   const visibleDocuments = useMemo(
     () =>
       snapshot.documents.filter(
@@ -341,31 +579,41 @@ export function useLibraryWorkspace(root: string) {
     snapshot,
     visibleDocuments,
     selectedFolder,
+    openDocuments,
+    activePath,
     activeDocument,
     loading,
     errorMessage,
-    saveStatus,
-    setSelectedFolder,
+    saveStatus: activeDocument?.saveStatus ?? "idle",
+    setSelectedFolder: setSelectedFolderState,
+    setActiveDocument,
     openDocument,
+    closeDocument,
     updateBody,
+    setMode,
     addDocument,
     addFolder,
     renameActive,
-    renameSelectedFolder,
+    renameFolderAt,
     moveActive,
-    moveSelectedFolder,
+    moveFolderAt,
     removeActive,
-    removeSelectedFolder,
-    persistCurrent,
+    removeFolderAt,
+    persistCurrent: async () =>
+      activePathRef.current
+        ? await persistDocument(activePathRef.current)
+        : true,
+    persistAllOpenDocuments,
     clearError: () => setErrorMessage(null),
   };
 }
 
-function toOpenDocument(
+function toInternalDocument(
   path: string,
   mtimeMs: number,
   document: ReturnType<typeof parseMarkdown>,
-): OpenDocument {
+  mode: EditorMode,
+): InternalDocument {
   return {
     path,
     title: titleFromPath(path),
@@ -373,7 +621,45 @@ function toOpenDocument(
     updated: document.updated,
     body: document.body,
     mtimeMs,
+    mode,
+    saveStatus: "idle",
+    dirty: false,
+    revision: 0,
   };
+}
+
+function replaceDocumentPath(
+  from: string,
+  replacement: InternalDocument,
+  documents: Map<string, InternalDocument>,
+  commit: (documents: Map<string, InternalDocument>) => void,
+) {
+  const next = new Map<string, InternalDocument>();
+  for (const [path, document] of documents) {
+    next.set(
+      path === from ? replacement.path : path,
+      path === from ? replacement : document,
+    );
+  }
+  commit(next);
+}
+
+function rebaseDocuments(
+  from: string,
+  to: string,
+  documents: Map<string, InternalDocument>,
+  commit: (documents: Map<string, InternalDocument>) => void,
+) {
+  const next = new Map<string, InternalDocument>();
+  for (const [path, document] of documents) {
+    if (isWithin(path, from)) {
+      const rebased = rebasePath(path, from, to);
+      next.set(rebased, { ...document, path: rebased });
+    } else {
+      next.set(path, document);
+    }
+  }
+  commit(next);
 }
 
 function titleFromPath(path: string): string {
