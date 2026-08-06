@@ -12,28 +12,38 @@ import {
   highlightSpecialChars,
   keymap,
 } from "@codemirror/view";
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 
 type MarkdownEditorProps = {
+  readonly documentKey: string;
+  readonly openDocumentKeys: readonly string[];
+  readonly visible: boolean;
   readonly value: string;
   readonly onChange: (value: string) => void;
 };
 
-export function MarkdownEditor({ value, onChange }: MarkdownEditorProps) {
+export function MarkdownEditor({
+  documentKey,
+  openDocumentKeys,
+  visible,
+  value,
+  onChange,
+}: MarkdownEditorProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
+  const statesRef = useRef(new Map<string, EditorState>());
+  const currentKeyRef = useRef(documentKey);
   const onChangeRef = useRef(onChange);
   const initialValueRef = useRef(value);
-  onChangeRef.current = onChange;
 
   useEffect(() => {
-    const host = hostRef.current;
-    if (!host) return;
+    onChangeRef.current = onChange;
+  }, [onChange]);
 
-    const view = new EditorView({
-      parent: host,
-      state: EditorState.create({
-        doc: initialValueRef.current,
+  const createState = useCallback(
+    (body: string) =>
+      EditorState.create({
+        doc: body,
         extensions: [
           highlightSpecialChars(),
           history(),
@@ -54,23 +64,61 @@ export function MarkdownEditor({ value, onChange }: MarkdownEditorProps) {
           }),
         ],
       }),
-    });
+    [],
+  );
+
+  useEffect(() => {
+    const host = hostRef.current;
+    if (!host) return;
+
+    const initialState = createState(initialValueRef.current);
+    statesRef.current.set(currentKeyRef.current, initialState);
+    const view = new EditorView({ parent: host, state: initialState });
     viewRef.current = view;
     return () => {
       viewRef.current = null;
       view.destroy();
     };
-  }, []);
+  }, [createState]);
 
   useEffect(() => {
     const view = viewRef.current;
-    if (!view || view.composing) return;
-    const current = view.state.doc.toString();
-    if (current === value) return;
-    view.dispatch({
-      changes: { from: 0, to: current.length, insert: value },
-    });
-  }, [value]);
+    if (!view) return;
+
+    const switchState = () => {
+      const currentKey = currentKeyRef.current;
+      statesRef.current.set(currentKey, view.state);
+      let next = statesRef.current.get(documentKey) ?? createState(value);
+      if (next.doc.toString() !== value) {
+        next = next.update({
+          changes: { from: 0, to: next.doc.length, insert: value },
+        }).state;
+      }
+      statesRef.current.set(documentKey, next);
+      currentKeyRef.current = documentKey;
+      view.setState(next);
+    };
+
+    if (view.composing) {
+      view.contentDOM.addEventListener("compositionend", switchState, {
+        once: true,
+      });
+      return () =>
+        view.contentDOM.removeEventListener("compositionend", switchState);
+    }
+    switchState();
+  }, [createState, documentKey, value]);
+
+  useEffect(() => {
+    const openKeys = new Set(openDocumentKeys);
+    for (const key of statesRef.current.keys()) {
+      if (!openKeys.has(key)) statesRef.current.delete(key);
+    }
+  }, [openDocumentKeys]);
+
+  useEffect(() => {
+    if (visible) viewRef.current?.requestMeasure();
+  }, [visible]);
 
   return <div className="markdown-editor" ref={hostRef} />;
 }

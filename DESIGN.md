@@ -13,7 +13,7 @@
 
 Intent Memo는 조용한 종이 책상처럼 느껴져야 한다. 크롬은 낮은 대비의 따뜻한 회색 표면으로 물러나고, 사용자가 쓴 Markdown과 현재 선택 상태만 선명하게 남는다.
 
-기억에 남아야 할 순간은 `⌘2`로 양쪽 pane이 사라져 글만 남는 전환이다. 장식 애니메이션 대신 content 집중의 상태 변화가 제품의 signature interaction이다.
+기억에 남아야 할 순간은 left pane의 `Intent | Docs`가 참고 문서와 인간 원본의 목적을 명확히 나누고, `⌘2`로 양쪽 pane이 사라져 글만 남는 전환이다. 장식 애니메이션 대신 목적과 content 집중의 상태 변화가 제품의 signature interaction이다.
 
 ### App Icon
 
@@ -119,6 +119,48 @@ Intent Memo는 조용한 종이 책상처럼 느껴져야 한다. 크롬은 낮�
 - `Edit`, `View` 두 button의 segmented control.
 - `aria-pressed`로 active 상태를 노출한다.
 
+### SpaceSwitcher
+
+- `Intent`, `Docs` 두 button의 segmented toggle이며 icon과 label을 함께 사용한다.
+- left pane 기본 variant는 보조 문구 `나의 의도` / `참고 문서`를 제공한다.
+- folder pane이 숨겨지면 content header에 current space icon+label compact binary toggle을 제공한다.
+- active segment만 `--accent`를 사용하며 공간별 theme·surface 색상은 바꾸지 않는다.
+- 상태: rest, hover, active, focus-visible, saving-disabled. `aria-pressed`와 전환 대상 `aria-label`을 제공한다.
+
+### LayoutCycleButton
+
+- content header에는 pane마다 하나씩 둔 방향성 icon 대신 단일 cyclic control만 사용한다.
+- `RefreshCw`와 현재 pane 수 `3`·`2`·`1`을 함께 표시하고 click할 때 `3-pane → 2-pane → content-only → 3-pane`으로 전환한다.
+- 42×30px hit area, border token, current/next state를 설명하는 `aria-label`과 tooltip을 제공한다.
+
+### BaseFolderList
+
+- folder pane 하단에 Intent·Docs 두 base folder를 2개 행으로 함께 표시한다. 각 행은 space icon, label, 말줄임 경로로 구성되고 click하면 해당 root의 folder picker를 연다.
+- 현재 space 행은 `--selection` surface와 text weight로 구분하되 별도 theme은 사용하지 않는다.
+- folder pane이 숨겨진 상태에서는 content header에 현재 space label·root를 표시하는 한 줄 control을 유지한다.
+- responsive CSS만으로 pane을 숨기지 않는다. DOM의 persisted layout state와 화면이 달라져 space switcher가 사라지는 상태를 만들지 않는다.
+
+### TabBar / TabItem
+
+- content pane 상단 고정 1줄이며 제목과 닫기 button만 표시한다.
+- 상태: rest, hover, active, dirty/saving/error, focus-visible.
+- active tab은 shape와 text weight로도 구분하고, overflow는 가로 scroll로 처리한다.
+- 닫기 button은 30px hit area와 문서 제목을 포함한 `aria-label`을 사용한다.
+
+### ContextMenu
+
+- `Rename…`, `Move…`, `Move to Trash` 세 명령만 제공하며 중첩 submenu를 사용하지 않는다.
+- modal과 공유하는 단일 soft shadow, control radius 6px, panel/content token만 사용한다.
+- mouse 우클릭, Context Menu key, `⇧F10`으로 열고 첫 항목에 focus한다.
+- Arrow Up/Down, Home/End, Enter/Space, Esc를 지원하고 종료 후 opener로 focus를 복귀한다.
+- 상태: closed, open, item-hover, item-focus, danger-focus.
+
+### MoveDialog
+
+- 문서·폴더가 공유하며 이동 가능한 destination folder만 표시한다.
+- 현재 parent와 folder 자기 자신·하위 경로는 제외한다.
+- 상태·focus trap·Esc·submit/cancel은 기존 NameDialog modal anatomy를 따른다.
+
 ### IconButton
 
 - 30px hit area, Lucide icon 15px.
@@ -159,6 +201,8 @@ Intent Memo는 조용한 종이 책상처럼 느껴져야 한다. 크롬은 낮�
 ### Rules
 
 - pane 폭 전환은 grid column interpolation으로만 사용하고 content 입력 중 layout animation을 시작하지 않는다.
+- space switcher는 180ms standard timing으로 active indicator만 전환하며 root load가 끝나기 전에 decorative transition을 추가하지 않는다.
+- tab activation은 즉시 반응하고 scroll overflow 외 layout animation을 사용하지 않는다.
 - autosave는 motion이 아니라 text status로 알린다.
 - `prefers-reduced-motion: reduce`에서는 모든 전환 시간을 1ms로 낮춘다.
 - decorative loop, bounce, glow pulse를 금지한다.
@@ -188,4 +232,4 @@ Intent Memo는 조용한 종이 책상처럼 느껴져야 한다. 크롬은 낮�
 
 - v0.1은 사용자 조절 typography와 theme UI를 제공하지 않는다.
 - Windows IME는 macOS 첫 release gate 밖이며 Windows 배포 전 별도 검증한다.
-- 독립 visual reviewer subagent는 현재 실행 환경의 명시적 delegation 제한 때문에 사용할 수 없다. 같은 build의 다중 viewport capture와 직접 interaction QA로 대체하되 최종 보고에 이 검증 공백을 명시한다.
+- v0.2는 tab 전환·닫기와 space 전환 전용 shortcut을 추가하지 않는다. visible SpaceSwitcher와 tab close button을 우선한다.

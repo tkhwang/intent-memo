@@ -1,7 +1,7 @@
-# Intent Memo v0.1 제품 스펙
+# Intent Memo v0.2 제품 스펙
 
 상태: 구현 기준 확정
-작성일: 2026-08-02
+작성일: 2026-08-05
 제품명: `Intent Memo` (`의도 메모`)
 
 ## 1. 제품 의도
@@ -10,13 +10,16 @@ Intent Memo는 AI 시대에 한 인간이 자신의 생각과 의도를 직접 �
 
 초기 버전은 AI 기능을 포함하지 않는다. 향후 LLM 기반 개인 지식·비서 기능은 사용자의 원본을 활용하는 파생 계층으로 추가하되, 인간이 작성한 원본을 대체하거나 암묵적으로 변경하지 않는다.
 
-## 2. v0.1 성공 조건
+## 2. v0.2 성공 조건
 
-- 사용자가 하나의 로컬 폴더를 Markdown library로 선택할 수 있다.
-- library의 root와 임의 깊이 하위 폴더에 있는 `.md` 문서를 탐색한다.
+- 기존 `libraryRoot`는 사용자가 직접 작성하는 Intent 원본 공간으로 유지된다.
+- 사용자가 별도 `docsRoot`를 선택해 참고·편집할 Markdown Docs 공간을 사용할 수 있다.
+- 두 공간의 root와 임의 깊이 하위 폴더에 있는 `.md` 문서를 탐색한다.
 - 파일과 폴더를 생성·이름 변경·이동하고 시스템 휴지통으로 삭제할 수 있다.
 - 문서는 Markdown syntax highlighting이 있는 소스 편집기에서 작성하고 자동 저장된다.
-- 같은 문서를 `Edit | View`로 전환해 rendered Markdown으로 읽을 수 있다.
+- 두 공간 모두 같은 문서를 `Edit | View`로 전환하며, Intent는 Edit, Docs는 View로 먼저 열린다.
+- 공간별 tab set으로 여러 문서를 열고 재시작 후 복원할 수 있다.
+- rename·move·Trash는 문서·폴더 항목의 keyboard-accessible context menu에서 실행한다.
 - 외부 변경이나 경계 이탈이 감지되면 원본을 조용히 덮어쓰거나 손상하지 않는다.
 - 클린 설치에서 library 선택 전에는 workspace에 진입하지 않는다.
 
@@ -32,11 +35,13 @@ Intent Memo는 AI 시대에 한 인간이 자신의 생각과 의도를 직접 �
 
 기존 PromptPad 이름, 버전, 설정, 데이터 형식은 계승하지 않는다. 기존 사용자나 운영 데이터가 없는 greenfield 제품으로 시작한다.
 
-## 4. v0.1 기능 범위
+## 4. v0.2 기능 범위
 
 ### 포함
 
-- 단일 read-write `libraryRoot`
+- Intent용 기존 read-write `libraryRoot`
+- Docs용 신규 read-write `docsRoot`
+- `Intent | Docs` space switcher와 공간별 목적·기본 mode
 - root-level 및 중첩 폴더 Markdown 탐색
 - 파일·폴더 create, rename, move
 - 파일·폴더 system Trash 이동
@@ -45,9 +50,11 @@ Intent Memo는 AI 시대에 한 인간이 자신의 생각과 의도를 직접 �
 - CodeMirror 6 Markdown syntax highlighting
 - 자동 저장
 - 동일 문서의 rendered View mode
+- 공간별 다중 문서 tab과 재시작 복원
+- 문서·폴더 context menu 기반 rename, move, system Trash
 - 3-pane workspace: 폴더, 문서 목록, content
 - pane 단축키: `⌘1` 폴더 pane 토글, `⌘2` 문서 목록과 폴더 pane을 함께 접어 content-only 전환
-- library 경로 선택·변경
+- Intent·Docs 경로 선택·변경
 - OS light/dark 색상 모드와 고정 제품 typography
 
 ### 제외
@@ -62,26 +69,40 @@ Intent Memo는 AI 시대에 한 인간이 자신의 생각과 의도를 직접 �
 - theme, font size, 언어 등 appearance 설정 UI
 - 기존 PromptPad library·settings migration
 - 여러 workspace profile 동시 관리
+- 자동 생성·자동 갱신되는 read-only AI 관리 계층
+- tab 전환·닫기 및 space 전환 전용 keyboard shortcut
 
 ## 5. 정보 구조와 인터랙션
 
 ### 5.1 첫 실행
 
-앱은 저장된 `libraryRoot`가 없으면 OS 폴더 선택기를 표시한다. 사용자가 유효한 폴더를 선택하기 전에는 빈 workspace를 열지 않는다. 선택한 경로는 새 bundle identity의 앱 설정에 저장하고 재시작 시 복원한다.
+앱은 저장된 `libraryRoot`가 없으면 Intent onboarding에서 OS 폴더 선택기를 표시한다. 사용자가 유효한 폴더를 선택하기 전에는 빈 workspace를 열지 않는다. 기존 settings에는 `docsRoot: null`, `activeSpace: "intent"`를 default로 적용해 기존 원본과 의미를 유지한다.
+
+Docs에 처음 진입할 때 `docsRoot`가 없으면 Docs 공간 안에서 폴더 선택을 요구한다. 선택 전에는 Docs workspace를 열지 않으며 선택한 두 root와 active space는 재시작 후 복원한다.
 
 ### 5.2 Workspace
 
-1. 폴더 pane은 `libraryRoot`의 디렉토리 트리를 표시한다.
-2. 문서 목록 pane은 선택 폴더의 Markdown 문서를 제목과 updated 날짜만으로 표시한다.
-3. content pane은 선택 문서의 `Edit | View` 전환과 파일명 기반 제목 편집을 제공한다.
+1. folder pane 상단의 icon+label `Intent | Docs` switcher가 현재 space를 표시하고 전환한다. 보조 문구는 `나의 의도` / `참고 문서`다.
+2. folder pane은 active space root의 디렉토리 트리를 표시한다.
+3. 문서 목록 pane은 선택 폴더의 Markdown 문서를 제목과 updated 날짜만으로 표시한다.
+4. content pane은 공간별 tab bar, 선택 문서의 `Edit | View`, 문서별 저장 상태를 제공한다.
+5. folder pane이 숨겨지면 content header에 current space icon+label compact toggle을 제공한다.
+6. folder pane 하단에는 Intent·Docs 두 base folder의 위치를 함께 표시하고 각각 변경할 수 있다. folder pane이 숨겨져도 content header에서 현재 space의 base folder 위치를 확인·변경할 수 있다.
+7. content header의 단일 layout control은 `3-pane → folder가 접힌 2-pane → content-only → 3-pane` 순서로 순환한다.
 
 `⌘1`은 폴더 pane만 독립적으로 토글한다. `⌘2`로 문서 목록을 접으면 폴더 pane도 함께 접혀 content-only 상태가 된다. 문서 목록을 다시 펼칠 때 이전 폴더 pane 상태를 복원한다. pane 상태는 앱 재시작 후 복원한다.
+
+문서·폴더의 rename, move, system Trash는 해당 목록 항목의 context menu에서 실행한다. menu는 mouse 우클릭, Context Menu key, `⇧F10`으로 열 수 있고 dialog 종료 후 원래 항목으로 focus를 복귀한다.
 
 ### 5.3 문서 편집
 
 - Edit mode는 CodeMirror 6 직접 통합으로 구현하며 Markdown syntax highlighting만 제공한다.
 - IME 조합 중에는 autosave나 외부 state 동기화가 조합 입력을 끊지 않는다.
 - View mode는 저장 대상과 같은 본문을 Markdown으로 렌더링한다.
+- Intent에서 새 tab은 Edit, Docs에서 새 tab은 View로 시작하며 사용자가 바꾼 mode는 tab이 열려 있는 동안 유지한다.
+- tab set과 active tab은 space별로 독립적이며 재시작 시 복원한다. 존재하지 않는 경로는 복원에서 제외한다.
+- tab 전환은 이전 tab의 background save를 시작하되 막지 않는다. tab 닫기는 해당 tab 저장 성공 후 진행한다.
+- 공간 전환과 앱 종료는 모든 pending save와 dirty 문서 저장이 성공한 경우에만 진행한다. 실패하면 현재 공간·tab·buffer를 유지한다.
 - 본문은 제품이 정한 고정 최대 폭, 행간, 자간을 사용한다.
 
 ## 6. 파일 및 metadata 계약
@@ -114,9 +135,9 @@ updated: 2026-08-02T03:04:05.000Z
 
 ## 7. 파일시스템 안전 계약
 
-모든 native 파일 작업은 canonicalized `libraryRoot`와 대상 경로를 비교한다.
+모든 native 파일 작업은 요청받은 active root(`libraryRoot` 또는 `docsRoot`)를 canonicalize하고 대상 경로와 비교한다.
 
-- 대상은 항상 `libraryRoot` 내부여야 하며 root 자체의 rename·move·delete는 허용하지 않는다.
+- 대상은 항상 요청 root 내부여야 하며 root 자체의 rename·move·delete는 허용하지 않는다.
 - 숨김 이름으로 시작하는 파일·폴더와 symlink는 탐색 및 조작 대상에서 제외한다.
 - path traversal, symlink traversal, root 외부 absolute path를 거부한다.
 - Markdown 문서는 `.md` 확장자만 취급한다.
@@ -139,12 +160,12 @@ updated: 2026-08-02T03:04:05.000Z
 
 ## 9. 장기 확장 경계
 
-후속 버전은 두 종류의 폴더를 독립 경로로 도입할 수 있다.
+v0.2는 사용자가 직접 소유하고 편집하는 두 종류의 폴더를 독립 경로로 제공한다.
 
-- 사용자 원본 폴더: canonical source-of-truth, editable
-- AI 관리 폴더: 원본에서 생성 가능한 derived knowledge, read-only Markdown render
+- Intent `libraryRoot`: 인간이 직접 작성하는 canonical source-of-truth, editable
+- Docs `docsRoot`: 사용자가 선택한 참고·프로젝트 문서, editable
 
-v0.1은 이 dual-folder UI와 Human/AI mode를 구현하지 않는다. 현재의 단일 `libraryRoot`, 경로 안전 경계, 문서 read model, rendered View mode가 후속 read-only AI 폴더를 추가할 수 있는 기반이어야 한다.
+자동 생성·자동 갱신되는 AI 관리 폴더는 여전히 후속 범위이며, 도입 시 Intent 원본을 대체하지 않는 derived read-only 계층으로 분리한다. 현재 Docs는 그 계층이 아니라 사용자 선택형 read-write 공간이다.
 
 ## 10. 배포 계약
 
@@ -160,5 +181,6 @@ v0.1은 이 dual-folder UI와 Human/AI mode를 구현하지 않는다. 현재의
 - frontend와 filesystem 경계 회귀 테스트 통과
 - Rust format, clippy, tests 통과
 - Tauri production build 통과
-- 실제 앱에서 첫 library 선택, root/nested CRUD, rename/move collision, external-change conflict, autosave, Edit/View, pane 단축키, 재시작 복원 확인
-- OS light/dark 각각에서 3-pane, content-only, empty/error 상태의 가독성과 한글 조판 확인
+- 실제 앱에서 Intent onboarding, Docs 폴더 지정, 두 root의 root/nested CRUD, context menu keyboard, rename/move collision, external-change conflict, autosave, 공간별 Edit/View, 다중 tab, pane 단축키, 재시작 복원 확인
+- 다중 dirty/pending save 상태에서 space 전환·window close가 모든 저장을 기다리고 부분 실패 시 state를 유지하는지 확인
+- OS light/dark 각각에서 3-pane, content-only compact space toggle, tab overflow, empty/error 상태의 가독성과 한글 조판 확인

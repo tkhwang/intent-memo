@@ -30,13 +30,15 @@
 - 그 위에 목적, 배경, 제약, 완료 조건처럼 의도를 구체화하는 데 필요한 작성 편의 기능을 단계적으로 더합니다.
 - AI 기능은 인간이 작성한 원본을 대체하지 않는 파생 계층으로만 후속 버전에서 검토합니다.
 
-## v0.1
+## v0.2
 
-- 단일 Markdown library와 임의 깊이의 폴더
+- 나의 목적을 기록하는 **Intent**와 참고 자료를 읽고 다듬는 **Docs** 두 Markdown 공간
+- 공간별 독립 로컬 root와 left pane switcher, pane을 접어도 유지되는 compact 전환 control
+- 여러 문서를 여는 tab, 공간별 session 복원, tab별 `Edit` / rendered `View`
 - 문서·폴더 생성, 이름 변경, 이동, 시스템 휴지통 이동
+- 이름 변경·이동·휴지통 동작을 제공하는 keyboard 접근 가능 context menu
 - CodeMirror 6 Markdown syntax highlighting
-- 500ms autosave, atomic write, 외부 변경 충돌 보호
-- 동일 문서의 `Edit` / rendered `View`
+- 문서별 500ms autosave, atomic write, 외부 변경 충돌 보호, 공간 전환·앱 종료 전 save barrier
 - `⌘1` 폴더 pane, `⌘2` content-only 전환
 - OS light/dark와 고정 CJK typography
 
@@ -44,7 +46,7 @@
 
 ## Data
 
-첫 실행에서 사용자가 `libraryRoot`를 선택합니다. 파일명은 제목의 source of truth이며, 새 문서는 최소 frontmatter와 빈 본문으로 시작합니다.
+첫 실행에서 Intent `libraryRoot`를 선택하고, Docs에 처음 진입할 때 별도 `docsRoot`를 선택합니다. 파일명은 제목의 source of truth이며, 새 문서는 최소 frontmatter와 빈 본문으로 시작합니다.
 
 ```markdown
 ---

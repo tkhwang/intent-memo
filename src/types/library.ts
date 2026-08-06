@@ -37,8 +37,19 @@ export type OpenDocument = {
 
 export type LayoutSettings = {
   readonly libraryRoot: string | null;
+  readonly docsRoot: string | null;
+  readonly activeSpace: Space;
   readonly folderPaneOpen: boolean;
   readonly listPaneOpen: boolean;
+  readonly tabSessions: Record<Space, TabSession>;
+};
+
+export const SPACES = ["intent", "docs"] as const;
+export type Space = (typeof SPACES)[number];
+
+export type TabSession = {
+  readonly paths: readonly string[];
+  readonly activePath: string | null;
 };
 
 export const EDITOR_MODES = ["edit", "view"] as const;

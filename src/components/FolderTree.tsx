@@ -1,17 +1,24 @@
 import { ChevronRight, Folder, Library } from "lucide-react";
 import { useMemo } from "react";
+import { ContextMenu } from "@/components/ContextMenu";
 import type { FolderEntry } from "@/types/library";
 
 type FolderTreeProps = {
   readonly folders: readonly FolderEntry[];
   readonly selectedPath: string;
   readonly onSelect: (path: string) => void;
+  readonly onMove: (path: string, origin: HTMLElement) => void;
+  readonly onRename: (path: string, origin: HTMLElement) => void;
+  readonly onTrash: (path: string, origin: HTMLElement) => void;
 };
 
 export function FolderTree({
   folders,
   selectedPath,
   onSelect,
+  onMove,
+  onRename,
+  onTrash,
 }: FolderTreeProps) {
   const children = useMemo(() => {
     const grouped = new Map<string, FolderEntry[]>();
@@ -33,6 +40,9 @@ export function FolderTree({
         icon="library"
         name="Library"
         onSelect={onSelect}
+        onMove={onMove}
+        onRename={onRename}
+        onTrash={onTrash}
         path=""
         selectedPath={selectedPath}
       />
@@ -40,6 +50,9 @@ export function FolderTree({
         childrenByParent={children}
         depth={1}
         onSelect={onSelect}
+        onMove={onMove}
+        onRename={onRename}
+        onTrash={onTrash}
         parent=""
         selectedPath={selectedPath}
       />
@@ -51,6 +64,9 @@ type FolderChildrenProps = {
   readonly childrenByParent: ReadonlyMap<string, readonly FolderEntry[]>;
   readonly depth: number;
   readonly onSelect: (path: string) => void;
+  readonly onMove: (path: string, origin: HTMLElement) => void;
+  readonly onRename: (path: string, origin: HTMLElement) => void;
+  readonly onTrash: (path: string, origin: HTMLElement) => void;
   readonly parent: string;
   readonly selectedPath: string;
 };
@@ -59,6 +75,9 @@ function FolderChildren({
   childrenByParent,
   depth,
   onSelect,
+  onMove,
+  onRename,
+  onTrash,
   parent,
   selectedPath,
 }: FolderChildrenProps) {
@@ -70,6 +89,9 @@ function FolderChildren({
         icon="folder"
         name={folder.name}
         onSelect={onSelect}
+        onMove={onMove}
+        onRename={onRename}
+        onTrash={onTrash}
         path={folder.path}
         selectedPath={selectedPath}
       />
@@ -77,6 +99,9 @@ function FolderChildren({
         childrenByParent={childrenByParent}
         depth={depth + 1}
         onSelect={onSelect}
+        onMove={onMove}
+        onRename={onRename}
+        onTrash={onTrash}
         parent={folder.path}
         selectedPath={selectedPath}
       />
@@ -89,6 +114,9 @@ type FolderButtonProps = {
   readonly icon: "folder" | "library";
   readonly name: string;
   readonly onSelect: (path: string) => void;
+  readonly onMove: (path: string, origin: HTMLElement) => void;
+  readonly onRename: (path: string, origin: HTMLElement) => void;
+  readonly onTrash: (path: string, origin: HTMLElement) => void;
   readonly path: string;
   readonly selectedPath: string;
 };
@@ -98,21 +126,55 @@ function FolderButton({
   icon,
   name,
   onSelect,
+  onMove,
+  onRename,
+  onTrash,
   path,
   selectedPath,
 }: FolderButtonProps) {
   const Icon = icon === "library" ? Library : Folder;
-  return (
+  const row = (
+    triggerProps?: Parameters<Parameters<typeof ContextMenu>[0]["children"]>[0],
+  ) => (
     <button
       aria-current={selectedPath === path ? "page" : undefined}
       className="folder-row"
       onClick={() => onSelect(path)}
       style={{ paddingInlineStart: `${8 + depth * 14}px` }}
       type="button"
+      {...triggerProps}
     >
       <ChevronRight aria-hidden="true" className="folder-chevron" size={12} />
       <Icon aria-hidden="true" size={15} strokeWidth={1.7} />
       <span>{name}</span>
     </button>
+  );
+
+  if (path === "") return row();
+
+  return (
+    <ContextMenu
+      items={[
+        {
+          id: "rename",
+          label: "Rename…",
+          onSelect: (origin) => onRename(path, origin),
+        },
+        {
+          id: "move",
+          label: "Move…",
+          onSelect: (origin) => onMove(path, origin),
+        },
+        {
+          id: "trash",
+          label: "Move to Trash",
+          danger: true,
+          onSelect: (origin) => onTrash(path, origin),
+        },
+      ]}
+      label={`${name} 동작`}
+    >
+      {row}
+    </ContextMenu>
   );
 }
