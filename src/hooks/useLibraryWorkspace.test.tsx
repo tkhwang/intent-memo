@@ -77,9 +77,11 @@ describe("useLibraryWorkspace tabs", () => {
       "b.md",
       "folder/c.md",
     ]);
-    expect(
-      result.current.openDocuments.find((entry) => entry.path === "a.md"),
-    ).toMatchObject({ body: "changed A", mode: "view", saveStatus: "saved" });
+    await waitFor(() =>
+      expect(
+        result.current.openDocuments.find((entry) => entry.path === "a.md"),
+      ).toMatchObject({ body: "changed A", mode: "view", saveStatus: "saved" }),
+    );
     expect(result.current.activeDocument).toMatchObject({
       path: "b.md",
       mode: "edit",
