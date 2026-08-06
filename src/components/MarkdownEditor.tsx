@@ -35,7 +35,10 @@ export function MarkdownEditor({
   const currentKeyRef = useRef(documentKey);
   const onChangeRef = useRef(onChange);
   const initialValueRef = useRef(value);
-  onChangeRef.current = onChange;
+
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
 
   const createState = useCallback(
     (body: string) =>

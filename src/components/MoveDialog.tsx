@@ -39,6 +39,33 @@ export function MoveDialog({
         aria-labelledby={titleId}
         aria-modal="true"
         className="name-dialog move-dialog"
+        onKeyDown={(event) => {
+          if (event.key === "Escape") {
+            event.preventDefault();
+            onCancel();
+            return;
+          }
+          if (event.key !== "Tab") return;
+
+          const focusableElements =
+            event.currentTarget.querySelectorAll<HTMLElement>(
+              "select:not(:disabled), button:not(:disabled)",
+            );
+          const firstElement = focusableElements[0];
+          const lastElement = focusableElements[focusableElements.length - 1];
+          if (!firstElement || !lastElement) return;
+
+          if (event.shiftKey && document.activeElement === firstElement) {
+            event.preventDefault();
+            lastElement.focus();
+          } else if (
+            !event.shiftKey &&
+            document.activeElement === lastElement
+          ) {
+            event.preventDefault();
+            firstElement.focus();
+          }
+        }}
         role="dialog"
       >
         <h2 id={titleId}>{title}</h2>
@@ -50,9 +77,6 @@ export function MoveDialog({
               event.target.value === "" ? null : Number(event.target.value),
             )
           }
-          onKeyDown={(event) => {
-            if (event.key === "Escape") onCancel();
-          }}
           ref={selectRef}
           value={destinationIndex ?? ""}
         >

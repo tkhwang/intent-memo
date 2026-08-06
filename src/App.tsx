@@ -287,6 +287,7 @@ function LibraryApp({ root, settings, onSettingsChange }: LibraryAppProps) {
     }
     return folderOptions.filter(
       (folder) =>
+        folder.path !== parentPath(moveTarget.path) &&
         folder.path !== moveTarget.path &&
         !folder.path.startsWith(`${moveTarget.path}/`),
     );
@@ -369,7 +370,9 @@ function LibraryApp({ root, settings, onSettingsChange }: LibraryAppProps) {
       "선택한 폴더와 안의 모든 메모를 시스템 휴지통으로 이동할까요?",
       { title: "폴더 삭제", kind: "warning" },
     );
-    if (approved) await workspace.removeFolderAt(path);
+    if (approved && (await workspace.persistAllOpenDocuments())) {
+      await workspace.removeFolderAt(path);
+    }
     restoreActionFocus();
   };
 

@@ -25,7 +25,7 @@ v0.1의 단일 library 3-pane 에디터를 AI 협업 워크플로에 맞는 두 
 | 분리 모델 | 하나의 앱 안에서 Docs/Intent 두 공간을 전환한다. 분할 패널이나 별도 창은 사용하지 않는다. |
 | Intent 공간 데이터 | 기존 `libraryRoot`를 그대로 사용한다. v0.1의 인간 원본·canonical source-of-truth 의미론과 기존 설정·문서를 유지한다. |
 | Docs 공간 데이터 | 설정에 새 독립 경로 `docsRoot`를 저장하는 사용자 선택형 read-write 보조 문서 공간이다. `libraryRoot` 내부/외부 제한을 두지 않되, 파일시스템 안전 계약(경계 canonicalize, symlink·숨김 제외, atomic save, mtime conflict)은 각 root에 동일하게 적용한다. 자동 생성·자동 갱신되는 read-only AI 관리 계층과는 구분한다. |
-| 전환 UI | 전체 theme은 공유한다. left pane(folder pane) 최상단에 icon+label 조합의 `Intent | Docs` segment toggle을 두고, 보조 문구 `나의 의도` / `참고 문서`와 empty state로 목적을 구분한다. active segment는 `--accent`, 전환은 180ms 표준 timing, DESIGN.md 토큰만 사용한다. |
+| 전환 UI | 전체 theme은 공유한다. left pane(folder pane) 최상단에 icon+label 조합의 `Intent \| Docs` segment toggle을 두고, 보조 문구 `나의 의도` / `참고 문서`와 empty state로 목적을 구분한다. active segment는 `--accent`, 전환은 180ms 표준 timing, DESIGN.md 토큰만 사용한다. |
 | 공간별 기본 mode | Docs에서 문서를 열면 `view`, Intent에서 열면 `edit`이 기본이다. 사용자가 toggle하면 그 문서(tab)가 열려 있는 동안 유지한다. |
 | Tab | content pane 상단 tab bar. 목록에서 문서 클릭 시 이미 열린 tab이 있으면 활성화, 없으면 새 tab을 추가한다. tab set은 공간별로 독립이며 재시작 시 복원한다. |
 | 아이콘 단순화 | content header에는 tab bar, `View \| Edit` toggle, 저장 상태만 남긴다. 문서·폴더의 이동/휴지통/이름 변경은 목록 항목의 context menu로 이동하고, keyboard 접근 경로를 함께 제공한다. |
