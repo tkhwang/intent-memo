@@ -17,6 +17,11 @@ import type {
 import type { EditorMode } from "@/types/library";
 
 type WorkspaceState = ReturnType<typeof useLibraryWorkspace>;
+type MediaListener = () => void;
+type MediaQueryListState = {
+  readonly registrations: Map<MediaListener, number>;
+  readonly removals: Map<MediaListener, number>;
+};
 
 const testState = vi.hoisted(() => {
   const openDocuments: WorkspaceDocument[] = [];
@@ -97,16 +102,13 @@ const dialog = vi.hoisted(() => ({
   open: vi.fn(),
 }));
 
-const mediaState = vi.hoisted(() => ({
-  matches: false,
-  listeners: new Set<() => void>(),
-  addEventListener: vi.fn((_: string, listener: () => void) => {
-    mediaState.listeners.add(listener);
-  }),
-  removeEventListener: vi.fn((_: string, listener: () => void) => {
-    mediaState.listeners.delete(listener);
-  }),
-}));
+const mediaState = vi.hoisted(() => {
+  const lists: MediaQueryListState[] = [];
+  return {
+    matches: false,
+    lists,
+  };
+});
 
 function setWorkspaceMode(mode: EditorMode): void {
   const activeDocument = testState.workspace.activeDocument;
@@ -153,18 +155,30 @@ beforeEach(() => {
   testState.workspace.activeDocument = null;
   testState.workspace.saveStatus = "idle";
   mediaState.matches = false;
-  mediaState.listeners.clear();
-  mediaState.addEventListener.mockClear();
-  mediaState.removeEventListener.mockClear();
+  mediaState.lists.length = 0;
   Object.defineProperty(window, "matchMedia", {
     configurable: true,
-    value: vi.fn(() => ({
-      get matches() {
-        return mediaState.matches;
-      },
-      addEventListener: mediaState.addEventListener,
-      removeEventListener: mediaState.removeEventListener,
-    })),
+    value: vi.fn(() => {
+      const list: MediaQueryListState = {
+        registrations: new Map<MediaListener, number>(),
+        removals: new Map<MediaListener, number>(),
+      };
+      mediaState.lists.push(list);
+      return {
+        get matches() {
+          return mediaState.matches;
+        },
+        addEventListener: vi.fn((_: string, listener: MediaListener) => {
+          list.registrations.set(
+            listener,
+            (list.registrations.get(listener) ?? 0) + 1,
+          );
+        }),
+        removeEventListener: vi.fn((_: string, listener: MediaListener) => {
+          list.removals.set(listener, (list.removals.get(listener) ?? 0) + 1);
+        }),
+      };
+    }),
   });
 });
 
@@ -217,20 +231,26 @@ describe("runtime theme", () => {
     const { unmount } = render(<App />);
 
     await waitFor(() =>
-      expect(mediaState.addEventListener).toHaveBeenCalledTimes(2),
+      expect(
+        mediaState.lists.map((list) => [...list.registrations.values()]),
+      ).toEqual([[1], [1]]),
     );
     expect(document.documentElement.dataset.theme).toBe("light");
     mediaState.matches = true;
-    for (const listener of mediaState.listeners) listener();
+    for (const list of mediaState.lists) {
+      for (const [listener, registrations] of list.registrations) {
+        if (registrations > (list.removals.get(listener) ?? 0)) listener();
+      }
+    }
     expect(document.documentElement.dataset.theme).toBe("dark");
 
-    const removalsBeforeUnmount =
-      mediaState.removeEventListener.mock.calls.length;
-    unmount();
-    expect(mediaState.removeEventListener.mock.calls).toHaveLength(
-      removalsBeforeUnmount + 1,
+    expect(mediaState.lists.map((list) => [...list.removals.values()])).toEqual(
+      [[1], []],
     );
-    expect(mediaState.listeners.size).toBe(0);
+    unmount();
+    expect(mediaState.lists.map((list) => [...list.removals.values()])).toEqual(
+      [[1], [1]],
+    );
   });
 });
 
@@ -286,6 +306,8 @@ describe("content toolbar", () => {
     const modeButton = await screen.findByRole("button", {
       name: "현재 Edit · 클릭하면 View",
     });
+    const tab = screen.getByRole("tab", { name: "hybrid" });
+    const closeButton = screen.getByRole("button", { name: "hybrid tab 닫기" });
     const tabBar = container.querySelector(".tab-bar");
     const actions = container.querySelector(".tab-bar-actions");
     const leading = container.querySelector(".tab-bar-leading");
@@ -301,6 +323,8 @@ describe("content toolbar", () => {
     expect(layoutButton.parentElement).toBe(leading);
     expect(actions?.parentElement).toBe(tabBar);
     expect(actions?.lastElementChild).toBe(modeButton);
+    expect(tab.parentElement?.getAttribute("role")).toBe("presentation");
+    expect(closeButton.parentElement).toBe(tab.parentElement);
     expect(layoutButton.textContent).toBe("");
     expect(modeButton.textContent).toBe("");
     expect(tabBar?.querySelector(".space-switcher-compact")).toBeNull();

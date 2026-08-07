@@ -56,7 +56,7 @@
 
 ## 4. 시그니처 스위처
 
-```
+```text
 [ ✎ Human ] ⟶ [ ⧉ AI ]
 ```
 
@@ -91,7 +91,7 @@ Human과 AI의 루트는 서로 다른 위치의 폴더이므로, 어느 위치�
 
 ### 6.2 공간색 적용 범위
 
-스위처 활성 버튼, 루트 표시줄 최종 폴더명, 선택된 폴더 행, 선택된 노트 행, 액티브 탭 밑줄, 헤더 공간 배지, 에디터 markdown 구문 기호. **본문 텍스트와 크롬 나머지는 뉴트럴을 유지한다.**
+스위처 활성 버튼, 루트 표시줄 최종 폴더명, 선택된 폴더 행, 선택된 노트 행, 액티브 탭 밑줄, 에디터 markdown 구문 기호. **본문 텍스트와 크롬 나머지는 뉴트럴을 유지한다.**
 
 ### 6.3 표면 (Light 테마 시작값)
 
@@ -141,7 +141,7 @@ Human과 AI의 루트는 서로 다른 위치의 폴더이므로, 어느 위치�
 - `SpaceSwitcher.tsx`: 스위처 + 루트 표시줄로 재작성
 - `DocumentList.tsx`: 스니펫 2줄 행 + 지연 스니펫 로드
 - `FolderTree.tsx`: 숫자 없는 계층 행, pill 선택 스타일
-- `TabBar.tsx`, content 헤더: 공간색 액티브 표시, 공간 배지
+- `TabBar.tsx`: 액티브 탭 밑줄에 공간색 적용
 - `MarkdownEditor.tsx`: markdown 구문 기호 공간색 (CodeMirror 하이라이트 스타일)
 - 색 토큰·테마 시스템: CSS custom properties 재정의 + 테마 속성 전환, `lib/settings.ts`에 테마 저장
 - 스니펫 제공은 `scan_library` 계약을 유지하고 Rust `read_document_snippets(root, paths)` visible-only batch IPC로 분리한다.

@@ -60,7 +60,7 @@
 ## Repo-Evidence Resolutions
 
 - invalid theme은 theme만 `"light"`로 복구하고 다른 유효한 settings를 보존한다. 현재 all-or-default parse 구조에 theme을 그대로 추가하지 않는다.
-- content header의 Human/AI badge는 모든 pane layout에서 유지한다. folder pane이 숨겨졌을 때만 추가로 active-root를 표시한다.
+- **Superseded by Task 9:** content header의 Human/AI badge 상시 유지와 folder pane 숨김 시 active-root 노출 요구. 최종 계약은 Human/AI 전환과 root 변경을 sidebar에만 둔다.
 - full SpaceSwitcher는 `radiogroup`/`radio` semantics와 Arrow/Home/End keyboard 이동을 제공한다.
 - 확정 색 대비를 계산했다. tint 선택면 위 `--space-text`는 Light 5.49:1 이상, charcoal/dark 6.31:1 이상이고, dark base 위 `--space-accent`도 Human 4.61:1 이상·AI 5.06:1 이상이므로 시작값을 변경하지 않는다.
 - jsdom 26에는 `window.matchMedia`가 없으므로 App test에 controllable mock을 두고 System theme listener의 적용·해제를 검증한다.
@@ -75,7 +75,7 @@
 | `src/lib/rootDisplay.ts` (신규) | `formatRootDisplay` 경로 축약 |
 | `src/lib/native.ts` | `readDocumentSnippets` batch IPC adapter·schema 추가 |
 | `src/index.css` | 라이트 그레이 팔레트, `data-theme` 3종, `data-space` 공간색, Bear 행/탭/에디터 스타일 |
-| `src/components/SpaceSwitcher.tsx` | Human|AI 스위처 + 루트 표시줄로 재작성 |
+| `src/components/SpaceSwitcher.tsx` | Human\|AI 스위처 + 루트 표시줄로 재작성 |
 | `src/components/SpaceSwitcher.test.tsx` (신규) | 스위처·루트 표시줄 동작 |
 | `src/hooks/useLibraryWorkspace.ts` | visible-only 스니펫 로드·`path + updatedMs` 캐시·save freshness |
 | `src/components/DocumentList.tsx` | 캐시된 스니펫 행 |
@@ -856,7 +856,7 @@ Run: `pnpm test src/components/SpaceSwitcher.test.tsx` · Expected: PASS
 **Interfaces:**
 - Consumes: `--space-accent`/`--space-tint`/`--space-text`, 확정 문구 (Global Constraints).
 
-- [x] **Step 1: content-header 공간 배지 계약 복구** — `src/App.tsx` content header의 compact `SpaceSwitcher`에서 `!folderVisible` 조건을 제거해 folder pane 표시 여부와 무관하게 `✎ Human`/`⧉ AI` 배지를 항상 렌더한다. folder pane이 숨겨진 경우에는 같은 배지가 공간 전환 진입점 역할을 유지하고, `active-root`는 Task 4 결정대로 folder pane이 숨겨졌을 때만 표시한다. `src/App.test.tsx`에 full 3-pane에서도 현재 공간 배지가 존재하며 전환 가능하다는 회귀를 추가한다.
+- [x] **Step 1: content-header 공간 배지 계약 복구 (Task 9에서 superseded)** — 당시 `src/App.tsx` content header의 compact `SpaceSwitcher`에서 `!folderVisible` 조건을 제거해 folder pane 표시 여부와 무관하게 `✎ Human`/`⧉ AI` 배지를 렌더했다. Task 9에서 content header와 `active-root`를 제거하고 공간 전환·root 변경을 sidebar로 한정했다.
 
 - [x] **Step 2: 탭·모드 스위치 공간색 CSS** — `src/index.css`:
 
@@ -956,7 +956,7 @@ Run: `pnpm test src/components/SpaceSwitcher.test.tsx` · Expected: PASS
 
 - [x] **Step 2: CLAUDE.md UI Contract 갱신** — 다음 항목을 수정한다:
   - `Intent | Docs` 표기를 `Human | AI`(내부 키는 intent/docs 유지)로.
-  - "the folder pane lists both configurable base folders" → 사이드바는 active root 표시줄(경로 끝부분+최종 폴더 강조)을 제공하고, compact header는 pane 숨김 시 active root를 유지한다로.
+  - "the folder pane lists both configurable base folders" → 사이드바는 active root 표시줄(경로 끝부분+최종 폴더 강조)을 제공한다로. compact header의 active-root 유지 요구는 Task 9에서 superseded되어 최종 계약에서 제외한다.
   - "OS color mode … fixed" → 테마 설정(Light 기본 · Charcoal · Dark · System)으로.
   - 문서 리스트가 제목+스니펫+날짜 행이라는 문장 추가.
 

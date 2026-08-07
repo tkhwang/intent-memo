@@ -106,6 +106,7 @@ export function PrimitiveShowcase() {
             <div data-space="intent">
               <SpaceSwitcher
                 activeSpace="intent"
+                groupName="showcase-human-space"
                 root="/Users/me/memo/intents"
                 onChange={async () => {}}
               />
@@ -113,6 +114,7 @@ export function PrimitiveShowcase() {
             <div data-space="docs">
               <SpaceSwitcher
                 activeSpace="docs"
+                groupName="showcase-ai-space"
                 root="/Users/me/projects/ai-results"
                 onChange={async () => {}}
               />

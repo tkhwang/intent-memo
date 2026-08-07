@@ -33,7 +33,7 @@ const markerNodes = new Set([
   "HorizontalRule",
 ]);
 
-const markdownMarkerDecorations = ViewPlugin.fromClass(
+export const markdownMarkerDecorations = ViewPlugin.fromClass(
   class {
     decorations;
 
@@ -43,9 +43,10 @@ const markdownMarkerDecorations = ViewPlugin.fromClass(
 
     update(update: {
       readonly docChanged: boolean;
+      readonly viewportChanged: boolean;
       readonly view: EditorView;
     }) {
-      if (update.docChanged) {
+      if (update.docChanged || update.viewportChanged) {
         this.decorations = buildMarkerDecorations(update.view);
       }
     }
@@ -55,15 +56,27 @@ const markdownMarkerDecorations = ViewPlugin.fromClass(
 
 function buildMarkerDecorations(view: EditorView) {
   const ranges: Range<Decoration>[] = [];
-  syntaxTree(view.state).iterate({
-    enter(node) {
-      if (markerNodes.has(node.name) && node.from < node.to) {
-        ranges.push(
-          Decoration.mark({ class: "cm-space-mark" }).range(node.from, node.to),
-        );
-      }
-    },
-  });
+  for (const { from, to } of view.visibleRanges) {
+    syntaxTree(view.state).iterate({
+      from,
+      to,
+      enter(node) {
+        if (
+          markerNodes.has(node.name) &&
+          node.from >= from &&
+          node.to <= to &&
+          node.from < node.to
+        ) {
+          ranges.push(
+            Decoration.mark({ class: "cm-space-mark" }).range(
+              node.from,
+              node.to,
+            ),
+          );
+        }
+      },
+    });
+  }
   return Decoration.set(ranges, true);
 }
 

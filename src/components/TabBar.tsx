@@ -27,6 +27,7 @@ export function TabBar({
           <div
             className={`tab-item ${activePath === document.path ? "active" : ""}`}
             key={document.path}
+            role="presentation"
           >
             <button
               aria-selected={activePath === document.path}

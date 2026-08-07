@@ -31,8 +31,8 @@ Intent Memo는 조용한 종이 책상처럼 느껴져야 한다. 크롬은 낮�
 
 | Token | 역할 |
 |---|---|
-| `--canvas` / `--panel` / `--content` | 라이트 그레이 canvas·list와 흰 editor surface |
-| `--sidebar` / `--sidebar-text` / `--sidebar-muted` | sidebar 전용 surface·text; Charcoal에서 sidebar만 `#272C34` |
+| `--canvas` / `--panel` / `--list` / `--content` | 라이트 그레이 canvas·list와 흰 editor surface |
+| `--sidebar-bg` / `--sidebar-text` / `--sidebar-muted` / `--sidebar-border` | sidebar 전용 surface·text·separator; Charcoal에서 sidebar만 `#272C34` |
 | `--text` / `--muted` / `--border` | 뉴트럴 본문·보조 text·pane separator |
 | `--space-accent` | Human muted red / AI slate blue 강조선·caret·marker |
 | `--space-tint` | 선택된 switcher·folder·document·mode의 옅은 공간색 surface |

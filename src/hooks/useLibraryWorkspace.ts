@@ -201,14 +201,21 @@ export function useLibraryWorkspace(
       ),
     [selectedFolder, snapshot.documents],
   );
-  snippetScopeRef.current = {
-    root,
-    keys: new Set(
-      visibleDocuments.map((document) =>
-        snippetKey(document.path, document.updatedMs),
+  const snippetScope = useMemo(
+    () => ({
+      root,
+      keys: new Set(
+        visibleDocuments.map((document) =>
+          snippetKey(document.path, document.updatedMs),
+        ),
       ),
-    ),
-  };
+    }),
+    [root, visibleDocuments],
+  );
+
+  useEffect(() => {
+    snippetScopeRef.current = snippetScope;
+  }, [snippetScope]);
 
   useEffect(() => {
     mountedRef.current = true;

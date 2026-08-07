@@ -1,6 +1,14 @@
 // @vitest-environment jsdom
 
-import { act, renderHook, waitFor } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  renderHook,
+  screen,
+  waitFor,
+} from "@testing-library/react";
+import { Suspense, startTransition, useState } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const native = vi.hoisted(() => ({
@@ -201,6 +209,80 @@ describe("useLibraryWorkspace snippets", () => {
       ["a.md", "snippet:a.md"],
       ["b.md", "snippet:b.md"],
     ]);
+  });
+
+  it("validates snippet responses against the committed scope during a suspended transition", async () => {
+    // Given: the committed root scope has an in-flight snippet request.
+    let resolveSnippets: (
+      results: readonly {
+        readonly path: string;
+        readonly snippet: string | null;
+      }[],
+    ) => void = () => undefined;
+    const snippets = new Promise<
+      readonly {
+        readonly path: string;
+        readonly snippet: string | null;
+      }[]
+    >((resolve) => {
+      resolveSnippets = resolve;
+    });
+    native.readDocumentSnippets.mockReturnValueOnce(snippets);
+    const suspended = new Promise<never>(() => undefined);
+    const pendingRender = vi.fn();
+    function Harness() {
+      const workspace = useLibraryWorkspace("/root", { defaultMode: "edit" });
+      const [shouldSuspend, setShouldSuspend] = useState(false);
+      if (shouldSuspend) {
+        pendingRender();
+        throw suspended;
+      }
+      return (
+        <>
+          <button
+            type="button"
+            onClick={() => {
+              startTransition(() => {
+                workspace.setSelectedFolder("folder");
+                setShouldSuspend(true);
+              });
+            }}
+          >
+            Switch folder
+          </button>
+          <output data-testid="snippet">
+            {workspace.visibleSnippets.get("a.md") ?? ""}
+          </output>
+        </>
+      );
+    }
+    render(
+      <Suspense fallback={null}>
+        <Harness />
+      </Suspense>,
+    );
+    await waitFor(() =>
+      expect(native.readDocumentSnippets).toHaveBeenCalledWith("/root", [
+        "a.md",
+        "b.md",
+      ]),
+    );
+
+    // When: a folder change renders but cannot commit, then the root response arrives.
+    fireEvent.click(screen.getByRole("button", { name: "Switch folder" }));
+    await waitFor(() => expect(pendingRender).toHaveBeenCalled());
+    await act(async () => {
+      resolveSnippets([
+        { path: "a.md", snippet: "snippet:a.md" },
+        { path: "b.md", snippet: "snippet:b.md" },
+      ]);
+      await snippets;
+    });
+
+    // Then: validation still accepts the response for the last committed scope.
+    await waitFor(() =>
+      expect(screen.getByTestId("snippet").textContent).toBe("snippet:a.md"),
+    );
   });
 
   it("reuses matching cache entries and reloads only a changed mtime", async () => {

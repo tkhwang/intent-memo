@@ -1,11 +1,12 @@
 import { BookOpenText, MoveRight, PenLine } from "lucide-react";
-import { type KeyboardEvent, useRef, useState } from "react";
+import { type KeyboardEvent, useId, useRef, useState } from "react";
 import { formatRootDisplay } from "@/lib/rootDisplay";
 import type { Space } from "@/types/library";
 
 type SpaceSwitcherProps = {
   readonly activeSpace: Space;
   readonly compact?: boolean;
+  readonly groupName?: string;
   readonly root?: string | null;
   readonly onChange: (space: Space) => Promise<void>;
   readonly onRootChange?: () => void;
@@ -21,10 +22,13 @@ const spaces = ["intent", "docs"] as const;
 export function SpaceSwitcher({
   activeSpace,
   compact = false,
+  groupName,
   root,
   onChange,
   onRootChange,
 }: SpaceSwitcherProps) {
+  const generatedGroupName = useId();
+  const radioGroupName = groupName ?? generatedGroupName;
   const [switching, setSwitching] = useState(false);
   const optionRefs = useRef<Record<Space, HTMLInputElement | null>>({
     intent: null,
@@ -101,8 +105,7 @@ export function SpaceSwitcher({
                   aria-checked={activeSpace === space}
                   checked={activeSpace === space}
                   className="sr-only"
-                  disabled={switching}
-                  name="space"
+                  name={radioGroupName}
                   onChange={() => void selectSpace(space)}
                   ref={(node) => {
                     optionRefs.current[space] = node;
