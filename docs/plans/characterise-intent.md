@@ -595,7 +595,7 @@ export function SpaceSwitcher({
 - Create: `src/lib/rootDisplay.ts`
 - Create: `src/lib/rootDisplay.test.ts`
 - Modify: `src/components/SpaceSwitcher.tsx` (루트 표시줄 렌더)
-- Modify: `src/App.tsx` (`base-folder-list` fieldset 제거, props 연결, header `active-root` 조건)
+- Modify: `src/App.tsx` (`base-folder-list` fieldset 제거, props 연결; header `active-root` 조건은 Task 9에서 superseded)
 - Modify: `src/index.css`
 
 **Interfaces:**
@@ -696,7 +696,7 @@ Run: `pnpm test src/components/SpaceSwitcher.test.tsx` · Expected: PASS
 - [x] **Step 6: App 연결·정리** — `src/App.tsx`에서:
   1. folder pane의 `<SpaceSwitcher …>`에 `root={root}` · `onRootChange={() => void handleRootChange(settings.activeSpace)}` 추가.
   2. `base-folder-list` fieldset(현재 422–454행 부근) 전체 삭제. 이때 미사용이 되는 lucide import(`Files`, `NotebookPen`)를 정리한다.
-  3. content header의 `active-root` 버튼을 `{!folderVisible && (…)}`로 감싸 folder pane이 보일 때는 렌더하지 않는다 (compact 계약: pane이 숨겨진 동안 active root 노출 유지).
+  3. **Superseded by Task 9:** content header의 `active-root` 노출 요구. 최종 계약은 pane이 숨겨져도 content toolbar에 root를 반복하지 않고, sidebar를 다시 연 뒤 root를 변경한다.
   4. `DocsWelcomeScreen`의 `<SpaceSwitcher activeSpace="docs" …>`는 root 없이 그대로 둔다.
 
 - [x] **Step 7: 루트 표시줄 CSS** — `src/index.css`:
@@ -936,10 +936,10 @@ Run: `pnpm test src/components/SpaceSwitcher.test.tsx` · Expected: PASS
 - [x] **Step 7: onboarding·라벨 문구 교체** — `src/App.tsx`에서:
   1. `DocsWelcomeScreen`: eyebrow `AI · 구현 결과`, h1 `AI가 만든 Markdown 결과를 읽을 폴더를 연결하세요.`, 본문 `내 의도와 취향으로 AI가 만든 결과를 읽는 공간입니다. 원본 파일은 선택한 폴더에 그대로 유지됩니다.`, 버튼 `AI folder 선택`.
   2. `chooseLibrary` 호출 title: `"Intent library 선택"` → `"Human library 선택"`, `"Docs folder 선택"` → `"AI folder 선택"` (두 곳: `RuntimeApp`·`handleRootChange`).
-  3. `active-root` 버튼과 aria-label의 `Intent`/`Docs` 표기를 `Human`/`AI`로 교체 (`settings.activeSpace === "intent" ? "Human" : "AI"`).
+  3. **Superseded by Task 9:** content header의 `active-root` 버튼·aria-label 교체 요구. 최종 구현에서는 해당 버튼을 제거했다.
   4. `WelcomeScreen`(첫 onboarding)의 eyebrow는 `Intent Memo · 의도 메모`로 유지하되 본문 아래 문장은 그대로 둔다 (제품명은 변경 없음).
 
-- [x] **Step 8: 검증** — Run: `pnpm test` && `pnpm check` && `pnpm build` · Expected: PASS. dev 앱에서 3-pane·2-pane·content-only 모두 content header 공간 배지가 유지되는지, Human/AI 전환 시 탭 밑줄·선택 행·caret·Markdown marker 색이 red/blue로 함께 바뀌고 heading·본문 텍스트는 뉴트럴인지, 빈 상태 문구가 공간별로 맞는지 확인.
+- [x] **Step 8: 검증** — Run: `pnpm test` && `pnpm check` && `pnpm build` · Expected: PASS. dev 앱에서 3-pane·2-pane·content-only 모두 content toolbar에 공간 배지·active-root가 없고 Human/AI 전환·root 변경은 sidebar에만 있는지 확인한다. Human/AI 전환 시 탭 밑줄·선택 행·caret·Markdown marker 색이 red/blue로 함께 바뀌고 heading·본문 텍스트는 뉴트럴인지, 빈 상태 문구가 공간별로 맞는지도 확인한다.
 
 ---
 
@@ -956,7 +956,7 @@ Run: `pnpm test src/components/SpaceSwitcher.test.tsx` · Expected: PASS
 
 - [x] **Step 2: CLAUDE.md UI Contract 갱신** — 다음 항목을 수정한다:
   - `Intent | Docs` 표기를 `Human | AI`(내부 키는 intent/docs 유지)로.
-  - "the folder pane lists both configurable base folders" → 사이드바는 active root 표시줄(경로 끝부분+최종 폴더 강조)을 제공한다로. compact header의 active-root 유지 요구는 Task 9에서 superseded되어 최종 계약에서 제외한다.
+  - "the folder pane lists both configurable base folders" → 사이드바는 active root 표시줄(경로 끝부분+최종 폴더 강조)을 제공한다. compact header의 active-root 유지 요구는 Task 9에서 superseded되어 최종 계약에서 제외한다.
   - "OS color mode … fixed" → 테마 설정(Light 기본 · Charcoal · Dark · System)으로.
   - 문서 리스트가 제목+스니펫+날짜 행이라는 문장 추가.
 
@@ -982,7 +982,7 @@ Expected: 전부 PASS.
   2. 테마 4종 전환 + System의 OS 연동. Charcoal에서 사이드바만 `#272C34`.
   3. 스니펫: 목록이 먼저 표시된 뒤 현재 폴더의 visible 행만 채워지고, frontmatter 제외 본문이 2줄 클램프로 보이며, 편집·autosave 뒤 해당 행이 즉시 갱신된다.
   4. 루트 표시줄 클릭 → 폴더 선택 다이얼로그 → 변경 반영.
-  5. `⌘1`/`⌘2` 레이아웃, pane 숨김 시 compact 배지·active-root 노출.
+  5. `⌘1`/`⌘2` 레이아웃에서 content toolbar에는 공간 배지·active-root가 없고, Human/AI 전환·root 변경은 sidebar에만 있다.
   6. Human 문서는 Edit로, AI 문서는 View로 열린다 (기존 동작 유지).
 
 ---
