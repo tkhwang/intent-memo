@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.0.1](https://github.com/tkhwang/intent-memo/compare/v1.0.0...v1.0.1) (2026-08-07)
+
+
+### Bug Fixes
+
+* **brew:** remove macos dependency ([13bf7f1](https://github.com/tkhwang/intent-memo/commit/13bf7f120c576483ff5231ad730dcb96a5a513d1))
+* **brew:** remove macos dependency ([172c027](https://github.com/tkhwang/intent-memo/commit/172c027ae6c02c7054caf3ab449327840bb6ebed))
+
 ## [1.0.0](https://github.com/tkhwang/intent-memo/compare/v0.1.0...v1.0.0) (2026-08-07)
 
 
