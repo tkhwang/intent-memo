@@ -70,7 +70,7 @@
 
 ### Task 5 — 앱 아이콘 갱신
 
-- [x] 기존 cream paper squircle 스타일을 유지하고 위 `Brain`/`Robot`, 아래 `Memo`를 `Brain ↓ Memo ↑ Robot` U자 흐름으로 연결한 2행 앱 아이콘 생성.
+- [x] 기존 cream paper squircle 스타일을 유지하고 위 `Brain`/`Bot`, 아래 `Memo`를 `Brain ↓ Memo ↑ Bot` U자 흐름으로 연결한 2행 앱 아이콘 생성.
 - [x] `pnpm exec tauri icon <generated-master>`로 macOS/Windows/iOS/Android icon assets 전체 갱신.
 - [x] `DESIGN.md`에 앱 아이콘 anatomy와 32px 가독성 원칙 기록.
 

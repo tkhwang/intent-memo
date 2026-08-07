@@ -17,11 +17,7 @@ Intent Memo는 조용한 종이 책상처럼 느껴져야 한다. 크롬은 낮�
 
 ### App Icon
 
-- 상징의 중심은 AI나 자동화가 아니라 인간이 스스로 남기는 의도다.
-- 따뜻한 종이 메모와 자연스러운 세 줄의 손글씨 필획으로 `인간이 직접 남긴 생각`을 표현한다.
-- 마지막 짧은 필획을 느슨한 terracotta 원으로 강조해 여러 생각 중 스스로 선택한 `의도`를 나타낸다.
-- arrow·chart·graph·robot·brain·sparkle·chat bubble·문자 로고는 사용하지 않는다. AI보다 메모와 인간 저작성이 먼저 읽혀야 한다.
-- macOS rounded-square silhouette 안에서 16px에서도 메모와 강조 표시가 구분되어야 하며, 본문 UI와 같은 warm neutral·graphite·terracotta 계열을 사용한다.
+- App icon의 symbol·flow·size 계약은 Components의 `AppIcon` 절을 단일 canonical rule로 사용한다.
 
 ## 2. Color
 
@@ -142,8 +138,8 @@ Intent Memo는 조용한 종이 책상처럼 느껴져야 한다. 크롬은 낮�
 ### AppIcon
 
 - 기존의 warm cream paper squircle, 촉감 있는 종이 질감, 부드러운 macOS shadow를 유지한다.
-- 중앙 표식은 위 왼쪽 Human red `Brain`, 위 오른쪽 AI slate-blue `Bot`, 아래쪽 넓은 graphite memo의 2행으로 구성한다. Brain에서 memo로 내려가고 memo에서 Bot으로 올라가는 U자형 사고 흐름을 화살표로 표시하며 텍스트는 넣지 않는다.
-- 앱 아이콘의 화살표는 data/navigation 동작이 아니라 Human 생각이 memo를 거쳐 AI로 전달되는 제품 서사를 나타내므로 단방향을 유지한다.
+- **Canonical symbol contract:** Human red `Brain`, AI slate-blue `Bot`, graphite memo와 이들을 잇는 화살표를 의도된 AppIcon symbol로 허용한다. 다른 generic AI 장식이나 텍스트는 추가하지 않는다.
+- 중앙 표식은 위 왼쪽 Brain, 위 오른쪽 Bot, 아래쪽 넓은 memo의 2행으로 구성한다. Brain에서 memo로 내려가고 memo에서 Bot으로 올라가는 U자형 단방향 흐름은 data/navigation 동작이 아니라 Human 생각이 memo를 거쳐 AI로 전달되는 제품 서사를 나타낸다.
 - 32px에서도 세 기호와 흐름이 구분되도록 단순한 선, 넉넉한 padding, 제한된 색을 사용한다.
 
 ### PaneLayoutButton
