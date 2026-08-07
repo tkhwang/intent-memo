@@ -3,14 +3,17 @@ import { markdown } from "@codemirror/lang-markdown";
 import {
   defaultHighlightStyle,
   syntaxHighlighting,
+  syntaxTree,
 } from "@codemirror/language";
-import { EditorState } from "@codemirror/state";
+import { EditorState, type Range } from "@codemirror/state";
 import {
+  Decoration,
   drawSelection,
   EditorView,
   highlightActiveLine,
   highlightSpecialChars,
   keymap,
+  ViewPlugin,
 } from "@codemirror/view";
 import { useCallback, useEffect, useRef } from "react";
 
@@ -21,6 +24,61 @@ type MarkdownEditorProps = {
   readonly value: string;
   readonly onChange: (value: string) => void;
 };
+
+const markerNodes = new Set([
+  "HeaderMark",
+  "ListMark",
+  "QuoteMark",
+  "CodeMark",
+  "HorizontalRule",
+]);
+
+export const markdownMarkerDecorations = ViewPlugin.fromClass(
+  class {
+    decorations;
+
+    constructor(view: EditorView) {
+      this.decorations = buildMarkerDecorations(view);
+    }
+
+    update(update: {
+      readonly docChanged: boolean;
+      readonly viewportChanged: boolean;
+      readonly view: EditorView;
+    }) {
+      if (update.docChanged || update.viewportChanged) {
+        this.decorations = buildMarkerDecorations(update.view);
+      }
+    }
+  },
+  { decorations: (plugin) => plugin.decorations },
+);
+
+function buildMarkerDecorations(view: EditorView) {
+  const ranges: Range<Decoration>[] = [];
+  for (const { from, to } of view.visibleRanges) {
+    syntaxTree(view.state).iterate({
+      from,
+      to,
+      enter(node) {
+        if (
+          markerNodes.has(node.name) &&
+          node.from >= from &&
+          node.to <= to &&
+          node.from < node.to
+        ) {
+          ranges.push(
+            Decoration.mark({ class: "cm-space-mark" }).range(
+              node.from,
+              node.to,
+            ),
+          );
+        }
+      },
+    });
+  }
+  return Decoration.set(ranges, true);
+}
 
 export function MarkdownEditor({
   documentKey,
@@ -50,6 +108,7 @@ export function MarkdownEditor({
           drawSelection(),
           highlightActiveLine(),
           markdown(),
+          markdownMarkerDecorations,
           syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
           keymap.of([...defaultKeymap, ...historyKeymap]),
           EditorView.lineWrapping,

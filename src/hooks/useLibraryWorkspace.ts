@@ -9,6 +9,7 @@ import {
   createFolder,
   moveEntry,
   readDocument,
+  readDocumentSnippets,
   renameDocument,
   renameFolder,
   saveDocument,
@@ -16,6 +17,7 @@ import {
   trashEntry,
 } from "@/lib/native";
 import type {
+  DocumentEntry,
   EditorMode,
   LibrarySnapshot,
   OpenDocument,
@@ -34,6 +36,11 @@ export type WorkspaceDocument = OpenDocument & {
 type InternalDocument = WorkspaceDocument & {
   readonly dirty: boolean;
   readonly revision: number;
+};
+
+type SnippetCacheEntry = {
+  readonly updatedMs: number;
+  readonly snippet: string;
 };
 
 type WorkspaceOptions = {
@@ -65,9 +72,16 @@ export function useLibraryWorkspace(
   const [activePath, setActivePathState] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [snippetCache, setSnippetCache] = useState<
+    Map<string, SnippetCacheEntry>
+  >(new Map());
   const documentsRef = useRef(documents);
+  const snippetCacheRef = useRef(snippetCache);
+  const snippetScopeRef = useRef({ root, keys: new Set<string>() });
+  const mountedRef = useRef(true);
   const activePathRef = useRef(activePath);
   const savePromisesRef = useRef(new Map<string, Promise<boolean>>());
+  const snippetRequestsRef = useRef(new Set<string>());
   const defaultModeRef = useRef(options.defaultMode);
   const initialSessionRef = useRef(options.initialSession ?? defaultSession);
   const onSessionChangeRef = useRef(options.onSessionChange);
@@ -77,6 +91,14 @@ export function useLibraryWorkspace(
     documentsRef.current = next;
     setDocuments(next);
   }, []);
+
+  const commitSnippetCache = useCallback(
+    (next: Map<string, SnippetCacheEntry>) => {
+      snippetCacheRef.current = next;
+      setSnippetCache(next);
+    },
+    [],
+  );
 
   const setActivePath = useCallback((path: string | null) => {
     activePathRef.current = path;
@@ -112,7 +134,9 @@ export function useLibraryWorkspace(
     setActivePath(null);
     setLoading(true);
     setErrorMessage(null);
+    commitSnippetCache(new Map());
     savePromisesRef.current.clear();
+    snippetRequestsRef.current.clear();
 
     const restore = async () => {
       const nextSnapshot = await refresh();
@@ -160,7 +184,7 @@ export function useLibraryWorkspace(
     return () => {
       cancelled = true;
     };
-  }, [commitDocuments, refresh, root, setActivePath]);
+  }, [commitDocuments, commitSnippetCache, refresh, root, setActivePath]);
 
   useEffect(() => {
     if (loading) return;
@@ -169,6 +193,88 @@ export function useLibraryWorkspace(
       activePath,
     });
   }, [activePath, documents, loading]);
+
+  const visibleDocuments = useMemo(
+    () =>
+      snapshot.documents.filter(
+        (document) => document.parent === selectedFolder,
+      ),
+    [selectedFolder, snapshot.documents],
+  );
+  const snippetScope = useMemo(
+    () => ({
+      root,
+      keys: new Set(
+        visibleDocuments.map((document) =>
+          snippetKey(document.path, document.updatedMs),
+        ),
+      ),
+    }),
+    [root, visibleDocuments],
+  );
+
+  useEffect(() => {
+    snippetScopeRef.current = snippetScope;
+  }, [snippetScope]);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    const pending = visibleDocuments.filter((document) => {
+      const cached = snippetCacheRef.current.get(document.path);
+      const key = snippetKey(document.path, document.updatedMs);
+      return (
+        cached?.updatedMs !== document.updatedMs &&
+        !snippetRequestsRef.current.has(key)
+      );
+    });
+    if (pending.length === 0) return;
+
+    const keys = pending.map((document) =>
+      snippetKey(document.path, document.updatedMs),
+    );
+    for (const key of keys) snippetRequestsRef.current.add(key);
+    void readDocumentSnippets(
+      root,
+      pending.map((document) => document.path),
+    )
+      .then((results) => {
+        if (!mountedRef.current || snippetScopeRef.current.root !== root)
+          return;
+        const requested = new Map(
+          pending.map((document) => [document.path, document]),
+        );
+        const next = new Map(snippetCacheRef.current);
+        let changed = false;
+        for (const result of results) {
+          const document = requested.get(result.path);
+          if (
+            !document ||
+            result.snippet == null ||
+            !snippetScopeRef.current.keys.has(
+              snippetKey(document.path, document.updatedMs),
+            )
+          ) {
+            continue;
+          }
+          next.set(result.path, {
+            updatedMs: document.updatedMs,
+            snippet: result.snippet,
+          });
+          changed = true;
+        }
+        if (changed) commitSnippetCache(next);
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        for (const key of keys) snippetRequestsRef.current.delete(key);
+      });
+  }, [commitSnippetCache, root, visibleDocuments]);
 
   const updateDocument = useCallback(
     (path: string, update: (current: InternalDocument) => InternalDocument) => {
@@ -202,7 +308,7 @@ export function useLibraryWorkspace(
         serializeMarkdown(markdown),
         current.mtimeMs,
       )
-        .then((payload) => {
+        .then(async (payload) => {
           const parsed = parseMarkdown(payload.content);
           updateDocument(path, (latest) => {
             const unchanged = latest.revision === current.revision;
@@ -215,6 +321,26 @@ export function useLibraryWorkspace(
               saveStatus: unchanged ? "saved" : "dirty",
             };
           });
+          const key = snippetKey(payload.path, payload.mtimeMs);
+          snippetRequestsRef.current.add(key);
+          setSnapshot((currentSnapshot) =>
+            updateSnapshotMtime(currentSnapshot, payload.path, payload.mtimeMs),
+          );
+          try {
+            const [result] = await readDocumentSnippets(root, [payload.path]);
+            if (result?.snippet != null) {
+              const next = new Map(snippetCacheRef.current);
+              next.set(payload.path, {
+                updatedMs: payload.mtimeMs,
+                snippet: result.snippet,
+              });
+              commitSnippetCache(next);
+            }
+          } catch (cause) {
+            void cause;
+          } finally {
+            snippetRequestsRef.current.delete(key);
+          }
           setErrorMessage(null);
           return true;
         })
@@ -235,7 +361,7 @@ export function useLibraryWorkspace(
       savePromisesRef.current.set(path, savePromise);
       return await savePromise;
     },
-    [root, updateDocument],
+    [commitSnippetCache, root, updateDocument],
   );
 
   const persistAllOpenDocuments = useCallback(async (): Promise<boolean> => {
@@ -567,17 +693,23 @@ export function useLibraryWorkspace(
   const activeDocument = activePath
     ? (openDocuments.find((document) => document.path === activePath) ?? null)
     : null;
-  const visibleDocuments = useMemo(
+  const visibleSnippets = useMemo(
     () =>
-      snapshot.documents.filter(
-        (document) => document.parent === selectedFolder,
+      new Map(
+        visibleDocuments.flatMap((document) => {
+          const cached = snippetCache.get(document.path);
+          return cached?.updatedMs === document.updatedMs
+            ? [[document.path, cached.snippet] as const]
+            : [];
+        }),
       ),
-    [selectedFolder, snapshot.documents],
+    [snippetCache, visibleDocuments],
   );
 
   return {
     snapshot,
     visibleDocuments,
+    visibleSnippets,
     selectedFolder,
     openDocuments,
     activePath,
@@ -680,4 +812,26 @@ function messageFrom(cause: unknown): string {
   if (cause instanceof Error) return cause.message;
   if (typeof cause === "string") return cause;
   return "알 수 없는 파일시스템 오류가 발생했습니다.";
+}
+
+function snippetKey(path: string, updatedMs: number): string {
+  return `${path}\u0000${updatedMs}`;
+}
+
+function updateSnapshotMtime(
+  snapshot: LibrarySnapshot,
+  path: string,
+  updatedMs: number,
+): LibrarySnapshot {
+  const documents = snapshot.documents
+    .map(
+      (document): DocumentEntry =>
+        document.path === path ? { ...document, updatedMs } : document,
+    )
+    .sort((left, right) =>
+      right.updatedMs === left.updatedMs
+        ? left.path.localeCompare(right.path)
+        : right.updatedMs - left.updatedMs,
+    );
+  return { ...snapshot, documents };
 }

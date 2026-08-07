@@ -1,6 +1,8 @@
-import { FileText, Folder, Plus, Trash2 } from "lucide-react";
+import { PanelLeft, PencilLine, Plus, Trash2 } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { ContextMenu } from "@/components/ContextMenu";
+import { DocumentList } from "@/components/DocumentList";
+import { FolderTree } from "@/components/FolderTree";
 import { MarkdownView } from "@/components/MarkdownView";
 import { SpaceSwitcher } from "@/components/SpaceSwitcher";
 import { TabBar } from "@/components/TabBar";
@@ -20,6 +22,20 @@ export function PrimitiveShowcase() {
       }),
     );
   }, []);
+
+  const folders = [
+    { path: "intentions", parent: "", name: "의도" },
+    { path: "intentions/weekly", parent: "intentions", name: "주간" },
+  ];
+  const documents = [
+    {
+      path: "intentions/weekly/direction.md",
+      parent: "intentions/weekly",
+      title: "이번 주에 지키려는 방향",
+      updatedMs: Date.parse("2026-08-02T13:40:00+09:00"),
+    },
+  ];
+  const noAction = () => {};
 
   return (
     <main className="showcase">
@@ -61,36 +77,48 @@ export function PrimitiveShowcase() {
         </article>
         <article className="showcase-card">
           <h2>Rows</h2>
-          <button className="folder-row" type="button">
-            <Folder size={15} />
-            <span>생각</span>
-          </button>
-          <button aria-current="page" className="folder-row" type="button">
-            <Folder size={15} />
-            <span>의도</span>
-          </button>
-          <button
-            aria-selected="true"
-            className="document-row"
-            role="option"
-            type="button"
-          >
-            <FileText size={15} />
-            <span className="document-copy">
-              <strong>이번 주에 지키려는 방향</strong>
-              <time>8월 2일 오후 1:40</time>
-            </span>
-          </button>
+          <FolderTree
+            folders={folders}
+            rootName="intentions"
+            selectedPath="intentions/weekly"
+            onMove={noAction}
+            onRename={noAction}
+            onSelect={noAction}
+            onTrash={noAction}
+          />
+          <DocumentList
+            documents={documents}
+            snippets={
+              new Map([
+                [documents[0].path, "AI 요청 전에 목적과 제약을 먼저 적는다."],
+              ])
+            }
+            selectedPath={documents[0].path}
+            onMove={noAction}
+            onRename={noAction}
+            onSelect={noAction}
+            onTrash={noAction}
+          />
         </article>
         <article className="showcase-card">
           <h2>Spaces</h2>
-          <SpaceSwitcher activeSpace="intent" onChange={async () => {}} />
-          <div className="showcase-row">
-            <SpaceSwitcher
-              activeSpace="docs"
-              compact
-              onChange={async () => {}}
-            />
+          <div className="showcase-space-pair">
+            <div data-space="intent">
+              <SpaceSwitcher
+                activeSpace="intent"
+                groupName="showcase-human-space"
+                root="/Users/me/memo/intents"
+                onChange={async () => {}}
+              />
+            </div>
+            <div data-space="docs">
+              <SpaceSwitcher
+                activeSpace="docs"
+                groupName="showcase-ai-space"
+                root="/Users/me/projects/ai-results"
+                onChange={async () => {}}
+              />
+            </div>
           </div>
         </article>
         <article className="showcase-card">
@@ -101,8 +129,26 @@ export function PrimitiveShowcase() {
               showcaseDocument("intent.md", "Intent", "dirty"),
               showcaseDocument("reference.md", "Reference", "error"),
             ]}
+            leadingAction={
+              <button
+                aria-label="Pane layout 변경"
+                className="icon-button layout-cycle-button"
+                type="button"
+              >
+                <PanelLeft aria-hidden="true" size={16} />
+              </button>
+            }
             onClose={async () => {}}
             onSelect={() => {}}
+            trailingActions={
+              <button
+                aria-label="현재 Edit · 클릭하면 View"
+                className="icon-button mode-cycle-button"
+                type="button"
+              >
+                <PencilLine aria-hidden="true" size={16} />
+              </button>
+            }
           />
         </article>
         <article className="showcase-card">

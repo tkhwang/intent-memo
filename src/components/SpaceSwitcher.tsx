@@ -1,29 +1,63 @@
-import { Files, NotebookPen } from "lucide-react";
-import { useState } from "react";
+import { BookOpenText, MoveRight, PenLine } from "lucide-react";
+import { type KeyboardEvent, useId, useRef, useState } from "react";
+import { formatRootDisplay } from "@/lib/rootDisplay";
 import type { Space } from "@/types/library";
 
 type SpaceSwitcherProps = {
   readonly activeSpace: Space;
   readonly compact?: boolean;
+  readonly groupName?: string;
+  readonly root?: string | null;
   readonly onChange: (space: Space) => Promise<void>;
+  readonly onRootChange?: () => void;
 };
 
 const spaceCopy = {
-  intent: { label: "Intent", description: "나의 의도", icon: NotebookPen },
-  docs: { label: "Docs", description: "참고 문서", icon: Files },
+  intent: { label: "Human", icon: PenLine },
+  docs: { label: "AI", icon: BookOpenText },
 } as const;
+
+const spaces = ["intent", "docs"] as const;
 
 export function SpaceSwitcher({
   activeSpace,
   compact = false,
+  groupName,
+  root,
   onChange,
+  onRootChange,
 }: SpaceSwitcherProps) {
+  const generatedGroupName = useId();
+  const radioGroupName = groupName ?? generatedGroupName;
   const [switching, setSwitching] = useState(false);
+  const optionRefs = useRef<Record<Space, HTMLInputElement | null>>({
+    intent: null,
+    docs: null,
+  });
 
   const selectSpace = async (space: Space) => {
     if (space === activeSpace || switching) return;
     setSwitching(true);
     await onChange(space).finally(() => setSwitching(false));
+  };
+
+  const handleGroupKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    const currentIndex = spaces.indexOf(activeSpace);
+    const nextIndex =
+      event.key === "ArrowRight" || event.key === "ArrowDown"
+        ? (currentIndex + 1) % spaces.length
+        : event.key === "ArrowLeft" || event.key === "ArrowUp"
+          ? (currentIndex - 1 + spaces.length) % spaces.length
+          : event.key === "Home"
+            ? 0
+            : event.key === "End"
+              ? spaces.length - 1
+              : null;
+    if (nextIndex == null) return;
+    event.preventDefault();
+    const nextSpace = spaces[nextIndex];
+    optionRefs.current[nextSpace]?.focus();
+    void selectSpace(nextSpace);
   };
 
   if (compact) {
@@ -38,36 +72,66 @@ export function SpaceSwitcher({
         onClick={() => void selectSpace(targetSpace)}
         type="button"
       >
-        <Icon aria-hidden="true" size={15} />
+        <Icon aria-hidden="true" size={14} />
         <span>{current.label}</span>
       </button>
     );
   }
 
+  const rootDisplay = root == null ? null : formatRootDisplay(root);
+
   return (
     <div className="space-switcher">
-      <fieldset className="space-segments">
-        <legend className="sr-only">공간 선택</legend>
-        {(["intent", "docs"] as const).map((space) => {
+      <div
+        aria-label="공간 선택"
+        className="space-segments"
+        onKeyDown={handleGroupKeyDown}
+        role="radiogroup"
+      >
+        {spaces.map((space, index) => {
           const entry = spaceCopy[space];
           const Icon = entry.icon;
           return (
-            <button
-              aria-pressed={activeSpace === space}
-              disabled={switching}
-              key={space}
-              onClick={() => void selectSpace(space)}
-              type="button"
-            >
-              <Icon aria-hidden="true" size={15} />
-              <span>{entry.label}</span>
-            </button>
+            <div className="space-segment-slot" key={space}>
+              {index > 0 && (
+                <MoveRight
+                  aria-hidden="true"
+                  className="space-flow-arrow"
+                  size={13}
+                />
+              )}
+              <label className="space-segment-option">
+                <input
+                  aria-checked={activeSpace === space}
+                  checked={activeSpace === space}
+                  className="sr-only"
+                  name={radioGroupName}
+                  onChange={() => void selectSpace(space)}
+                  ref={(node) => {
+                    optionRefs.current[space] = node;
+                  }}
+                  tabIndex={activeSpace === space ? 0 : -1}
+                  type="radio"
+                  value={space}
+                />
+                <Icon aria-hidden="true" size={14} />
+                <span>{entry.label}</span>
+              </label>
+            </div>
           );
         })}
-      </fieldset>
-      <span className="space-description">
-        {spaceCopy[activeSpace].description}
-      </span>
+      </div>
+      {rootDisplay && (
+        <button
+          className="root-row"
+          onClick={onRootChange}
+          title={root ?? undefined}
+          type="button"
+        >
+          <span className="root-parent">{rootDisplay.parent}</span>
+          <span className="root-leaf">{rootDisplay.leaf}</span>
+        </button>
+      )}
     </div>
   );
 }

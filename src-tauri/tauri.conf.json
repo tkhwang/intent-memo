@@ -16,6 +16,8 @@
     "windows": [
       {
         "title": "Intent Memo",
+        "titleBarStyle": "Overlay",
+        "hiddenTitle": true,
         "width": 1024,
         "height": 768,
         "resizable": true,

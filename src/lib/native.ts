@@ -2,6 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { z } from "zod";
 import type {
   DocumentPayload,
+  DocumentSnippet,
   EntryMutation,
   LibrarySnapshot,
 } from "@/types/library";
@@ -30,6 +31,13 @@ const documentPayloadSchema = z.object({
   mtimeMs: z.number().nonnegative(),
 });
 
+const documentSnippetSchema = z.object({
+  path: z.string(),
+  snippet: z.string().nullable(),
+});
+
+const documentSnippetsSchema = z.array(documentSnippetSchema);
+
 const entryMutationSchema = z.object({ path: z.string() });
 const commandErrorSchema = z.object({ code: z.string(), message: z.string() });
 
@@ -56,6 +64,17 @@ export async function readDocument(
     "read_document",
     { root, path },
     documentPayloadSchema,
+  );
+}
+
+export async function readDocumentSnippets(
+  root: string,
+  paths: readonly string[],
+): Promise<readonly DocumentSnippet[]> {
+  return await invokeParsed(
+    "read_document_snippets",
+    { root, paths },
+    documentSnippetsSchema,
   );
 }
 

@@ -1,11 +1,14 @@
 use serde::Serialize;
 use std::ffi::OsStr;
 use std::fs::{self, OpenOptions};
-use std::io::Write as _;
+use std::io::{Read as _, Write as _};
 use std::path::{Component, Path, PathBuf};
 use std::time::UNIX_EPOCH;
 
 type CommandResult<T> = Result<T, CommandError>;
+
+const SNIPPET_READ_BYTES: u64 = 4096;
+const SNIPPET_MAX_CHARS: usize = 160;
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -48,6 +51,13 @@ pub struct DocumentPayload {
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct DocumentSnippet {
+    pub path: String,
+    pub snippet: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct EntryMutation {
     pub path: String,
 }
@@ -79,6 +89,18 @@ pub fn read_document(root: String, path: String) -> CommandResult<DocumentPayloa
     let target = resolve_existing(&canonical_root, Path::new(&path), false)?;
     ensure_markdown_file(&target)?;
     payload(&canonical_root, &target)
+}
+
+#[tauri::command]
+pub fn read_document_snippets(
+    root: String,
+    paths: Vec<String>,
+) -> CommandResult<Vec<DocumentSnippet>> {
+    let canonical_root = canonical_root(Path::new(&root))?;
+    paths
+        .into_iter()
+        .map(|path| document_snippet(&canonical_root, &path))
+        .collect()
 }
 
 #[tauri::command]
@@ -270,6 +292,114 @@ fn scan_directory(
         }
     }
     Ok(())
+}
+
+fn document_snippet(root: &Path, path: &str) -> CommandResult<DocumentSnippet> {
+    let normalized = normalize_relative(Path::new(path), false)?;
+    if normalized.extension() != Some(OsStr::new("md")) {
+        return Err(error("invalid-document", "Expected a Markdown file"));
+    }
+    let relative = relative_string(root, &root.join(&normalized))?;
+    let candidate = root.join(normalized);
+    let metadata = match fs::symlink_metadata(&candidate) {
+        Ok(metadata) => metadata,
+        Err(_) => {
+            return Ok(DocumentSnippet {
+                path: relative,
+                snippet: None,
+            });
+        }
+    };
+    if metadata.file_type().is_symlink() {
+        return Err(error("symlink", "Symbolic links are not allowed"));
+    }
+    if !metadata.is_file() {
+        return Err(error("invalid-document", "Expected a Markdown file"));
+    }
+    let canonical = match fs::canonicalize(&candidate) {
+        Ok(canonical) => canonical,
+        Err(_) => {
+            return Ok(DocumentSnippet {
+                path: relative,
+                snippet: None,
+            });
+        }
+    };
+    if !canonical.starts_with(root) {
+        return Err(error(
+            "outside-library",
+            "Entry is outside the library root",
+        ));
+    }
+
+    let file = match fs::File::open(&canonical) {
+        Ok(file) => file,
+        Err(_) => {
+            return Ok(DocumentSnippet {
+                path: relative,
+                snippet: None,
+            });
+        }
+    };
+    let mut bytes = Vec::with_capacity(SNIPPET_READ_BYTES as usize);
+    if file
+        .take(SNIPPET_READ_BYTES)
+        .read_to_end(&mut bytes)
+        .is_err()
+    {
+        return Ok(DocumentSnippet {
+            path: relative,
+            snippet: None,
+        });
+    }
+    let content = String::from_utf8_lossy(&bytes);
+    Ok(DocumentSnippet {
+        path: relative,
+        snippet: Some(extract_snippet(&content)),
+    })
+}
+
+fn extract_snippet(markdown: &str) -> String {
+    let lines = markdown.lines().collect::<Vec<_>>();
+    let start = if lines.first().is_some_and(|line| line.trim() == "---") {
+        lines
+            .iter()
+            .enumerate()
+            .skip(1)
+            .find_map(|(index, line)| (line.trim() == "---").then_some(index + 1))
+            .unwrap_or(0)
+    } else {
+        0
+    };
+    let body = lines[start..]
+        .iter()
+        .map(|line| strip_markdown_prefix(line))
+        .filter(|line| !line.is_empty())
+        .collect::<Vec<_>>()
+        .join(" ");
+    body.chars().take(SNIPPET_MAX_CHARS).collect()
+}
+
+fn strip_markdown_prefix(line: &str) -> &str {
+    let mut text = line.trim();
+    if text.starts_with('#') {
+        text = text.trim_start_matches('#').trim_start();
+    }
+    for marker in ["> ", "- ", "* ", "+ "] {
+        if let Some(rest) = text.strip_prefix(marker) {
+            text = rest.trim_start();
+            break;
+        }
+    }
+    if let Some((prefix, rest)) = text.split_once(". ")
+        && prefix.chars().all(|character| character.is_ascii_digit())
+    {
+        text = rest.trim_start();
+    }
+    if text.starts_with("```") {
+        text = text.trim_start_matches('`').trim_start();
+    }
+    text
 }
 
 fn canonical_root(root: &Path) -> CommandResult<PathBuf> {
@@ -521,8 +651,8 @@ fn io_error(code: &'static str, context: &str, cause: std::io::Error) -> Command
 #[cfg(test)]
 mod tests {
     use super::{
-        atomic_save, create_document, create_folder, move_entry, normalize_relative,
-        rename_document, scan_library,
+        atomic_save, create_document, create_folder, extract_snippet, move_entry,
+        normalize_relative, read_document_snippets, rename_document, scan_library,
     };
     use std::fs;
     use std::path::Path;
@@ -536,6 +666,90 @@ mod tests {
         assert!(normalize_relative(Path::new(".hidden/note.md"), false).is_err());
         assert!(normalize_relative(Path::new("/absolute.md"), false).is_err());
         assert!(normalize_relative(Path::new("notes/intent.md"), false).is_ok());
+    }
+
+    #[test]
+    fn snippet_excludes_frontmatter_and_leading_markdown_markers() {
+        let body = "한".repeat(200);
+        let markdown = format!("---\ntitle: hidden\n---\n# {body}");
+
+        let snippet = extract_snippet(&markdown);
+
+        assert_eq!(snippet.chars().count(), 160);
+        assert!(!snippet.contains("title: hidden"));
+        assert!(!snippet.starts_with('#'));
+    }
+
+    #[test]
+    fn snippet_batch_returns_requested_markdown_paths() {
+        let directory = tempdir().expect("temporary directory");
+        let root_path = directory.path();
+        fs::write(root_path.join("a.md"), "# Alpha").expect("alpha note");
+        fs::write(root_path.join("b.md"), "> Beta").expect("beta note");
+        fs::write(root_path.join("ignored.txt"), "ignored").expect("ignored file");
+
+        let snippets = read_document_snippets(
+            root_path.to_string_lossy().to_string(),
+            vec!["b.md".to_owned(), "a.md".to_owned()],
+        )
+        .expect("snippet batch");
+
+        assert_eq!(snippets.len(), 2);
+        assert_eq!(snippets[0].path, "b.md");
+        assert_eq!(snippets[0].snippet.as_deref(), Some("Beta"));
+        assert_eq!(snippets[1].path, "a.md");
+        assert_eq!(snippets[1].snippet.as_deref(), Some("Alpha"));
+    }
+
+    #[test]
+    fn snippet_batch_keeps_other_results_when_a_file_is_missing() {
+        let directory = tempdir().expect("temporary directory");
+        let root_path = directory.path();
+        fs::write(root_path.join("present.md"), "Present").expect("present note");
+
+        let snippets = read_document_snippets(
+            root_path.to_string_lossy().to_string(),
+            vec!["missing.md".to_owned(), "present.md".to_owned()],
+        )
+        .expect("partial snippet batch");
+
+        assert_eq!(snippets[0].snippet, None);
+        assert_eq!(snippets[1].snippet.as_deref(), Some("Present"));
+    }
+
+    #[test]
+    fn snippet_batch_rejects_unsafe_and_non_markdown_paths() {
+        let directory = tempdir().expect("temporary directory");
+        let root_path = directory.path();
+        fs::write(root_path.join("note.txt"), "text").expect("text file");
+
+        for path in ["/absolute.md", "../outside.md", ".hidden.md", "note.txt"] {
+            assert!(
+                read_document_snippets(
+                    root_path.to_string_lossy().to_string(),
+                    vec![path.to_owned()],
+                )
+                .is_err()
+            );
+        }
+
+        #[cfg(unix)]
+        {
+            let outside = tempdir().expect("outside directory");
+            fs::write(outside.path().join("outside.md"), "outside").expect("outside note");
+            std::os::unix::fs::symlink(
+                outside.path().join("outside.md"),
+                root_path.join("linked.md"),
+            )
+            .expect("document symlink");
+            assert!(
+                read_document_snippets(
+                    root_path.to_string_lossy().to_string(),
+                    vec!["linked.md".to_owned()],
+                )
+                .is_err()
+            );
+        }
     }
 
     #[test]

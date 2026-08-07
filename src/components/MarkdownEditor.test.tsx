@@ -1,5 +1,7 @@
 // @vitest-environment jsdom
 
+import { markdown } from "@codemirror/lang-markdown";
+import { EditorState } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import {
   cleanup,
@@ -10,7 +12,10 @@ import {
 } from "@testing-library/react";
 import { Suspense, startTransition, useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { MarkdownEditor } from "@/components/MarkdownEditor";
+import {
+  MarkdownEditor,
+  markdownMarkerDecorations,
+} from "@/components/MarkdownEditor";
 
 beforeEach(() => {
   vi.stubGlobal("requestAnimationFrame", () => 0);
@@ -39,6 +44,65 @@ function PendingRender({
 }
 
 describe("MarkdownEditor", () => {
+  it("rebuilds marker decorations for each visible range after viewport changes", () => {
+    // Given: three headings with only the first and last ranges visible.
+    const value = "# First\n\n# Middle\n\n# Last";
+    const middleStart = value.indexOf("# Middle");
+    const lastStart = value.indexOf("# Last");
+    const state = EditorState.create({
+      doc: value,
+      extensions: [markdown(), markdownMarkerDecorations],
+    });
+    const view = new EditorView({ state });
+    Object.defineProperty(view, "visibleRanges", {
+      configurable: true,
+      value: [
+        { from: 0, to: middleStart },
+        { from: lastStart, to: value.length },
+      ],
+    });
+    const plugin = view.plugin(markdownMarkerDecorations);
+    if (!plugin) throw new TypeError("Markdown marker plugin is required");
+
+    // When: the viewport changes without a document edit.
+    const update = { docChanged: false, viewportChanged: true, view };
+    plugin.update(update);
+    const markers: string[] = [];
+    plugin.decorations.between(0, value.length, (from, to) => {
+      markers.push(value.slice(from, to));
+    });
+    view.destroy();
+
+    // Then: only markers inside each visible range are decorated.
+    expect(markers).toEqual(["#", "#"]);
+  });
+
+  it("marks Markdown syntax markers without coloring content text", async () => {
+    const { container } = render(
+      <MarkdownEditor
+        documentKey="markers.md"
+        openDocumentKeys={["markers.md"]}
+        visible
+        value={"# Heading\n\n- Item\n\n> Quote\n\n```ts\ncode\n```\n\n---"}
+        onChange={() => undefined}
+      />,
+    );
+
+    await screen.findByLabelText("Markdown 본문");
+    const markers = [...container.querySelectorAll(".cm-space-mark")].map(
+      (element) => element.textContent,
+    );
+
+    expect(markers).toEqual(
+      expect.arrayContaining(["#", "-", ">", "```", "---"]),
+    );
+    expect(
+      [...container.querySelectorAll(".cm-space-mark")].some((element) =>
+        /Heading|Item|Quote|code/.test(element.textContent ?? ""),
+      ),
+    ).toBe(false);
+  });
+
   it("keeps using the committed onChange while a callback update is pending", async () => {
     const committedOnChange = vi.fn();
     const pendingOnChange = vi.fn();

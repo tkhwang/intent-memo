@@ -22,6 +22,11 @@ export type DocumentPayload = {
   readonly mtimeMs: number;
 };
 
+export type DocumentSnippet = {
+  readonly path: string;
+  readonly snippet: string | null;
+};
+
 export type EntryMutation = {
   readonly path: string;
 };
@@ -41,16 +46,21 @@ export type LayoutSettings = {
   readonly activeSpace: Space;
   readonly folderPaneOpen: boolean;
   readonly listPaneOpen: boolean;
+  readonly theme: Theme;
   readonly tabSessions: Record<Space, TabSession>;
 };
 
 export const SPACES = ["intent", "docs"] as const;
 export type Space = (typeof SPACES)[number];
 
+export const THEMES = ["light", "charcoal", "dark", "system"] as const;
+export type Theme = (typeof THEMES)[number];
+export type ResolvedTheme = Exclude<Theme, "system">;
+
 export type TabSession = {
   readonly paths: readonly string[];
   readonly activePath: string | null;
 };
 
-export const EDITOR_MODES = ["edit", "view"] as const;
+export const EDITOR_MODES = ["edit", "view", "split"] as const;
 export type EditorMode = (typeof EDITOR_MODES)[number];

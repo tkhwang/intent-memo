@@ -13,7 +13,7 @@
 
 Intent Memo는 조용한 종이 책상처럼 느껴져야 한다. 크롬은 낮은 대비의 따뜻한 회색 표면으로 물러나고, 사용자가 쓴 Markdown과 현재 선택 상태만 선명하게 남는다.
 
-기억에 남아야 할 순간은 left pane의 `Intent | Docs`가 참고 문서와 인간 원본의 목적을 명확히 나누고, `⌘2`로 양쪽 pane이 사라져 글만 남는 전환이다. 장식 애니메이션 대신 목적과 content 집중의 상태 변화가 제품의 signature interaction이다.
+기억에 남아야 할 순간은 `✎ Human ⟶ ⧉ AI`가 인간의 의도에서 AI 결과로 이어지는 흐름을 명확히 보여주고, `⌘2`로 양쪽 pane이 사라져 글만 남는 전환이다. 장식 애니메이션 대신 목적과 content 집중의 상태 변화가 제품의 signature interaction이다.
 
 ### App Icon
 
@@ -29,22 +29,21 @@ Intent Memo는 조용한 종이 책상처럼 느껴져야 한다. 크롬은 낮�
 
 색상은 CSS custom properties로만 소비한다.
 
-| Token | Light 역할 | Dark 역할 |
-|---|---|---|
-| `--canvas` | 앱 배경 | 앱 배경 |
-| `--panel` | folder/list surface | folder/list surface |
-| `--content` | editor/read surface | editor/read surface |
-| `--text` | primary text | primary text |
-| `--muted` | 날짜·보조 설명 | 날짜·보조 설명 |
-| `--border` | pane separator | pane separator |
-| `--selection` | 선택된 항목 | 선택된 항목 |
-| `--selection-text` | 선택 항목 text | 선택 항목 text |
-| `--accent` | focus·active control | focus·active control |
-| `--danger` | destructive action | destructive action |
+| Token | 역할 |
+|---|---|
+| `--canvas` / `--panel` / `--list` / `--content` | 라이트 그레이 canvas·list와 흰 editor surface |
+| `--sidebar-bg` / `--sidebar-text` / `--sidebar-muted` / `--sidebar-border` | sidebar 전용 surface·text·separator; Charcoal에서 sidebar만 `#272C34` |
+| `--text` / `--muted` / `--border` | 뉴트럴 본문·보조 text·pane separator |
+| `--space-accent` | Human muted red / AI slate blue 강조선·caret·marker |
+| `--space-tint` | 선택된 switcher·folder·document·mode의 옅은 공간색 surface |
+| `--space-text` | active label·root leaf·link의 대비 text |
+| `--selection` / `--selection-text` | dialog 등 공간과 무관한 선택 상태 |
+| `--danger` | destructive action |
 
 ### Rules
 
-- `prefers-color-scheme`만으로 light/dark를 전환한다.
+- `data-theme`은 Light(기본), Charcoal, Dark를 표현하고 System은 runtime에서 OS light/dark로 해석한다.
+- Light는 라이트 그레이 3-pane, Charcoal은 sidebar만 블루 잉크 `#272C34`, Dark는 전체 블루-차콜 surface를 사용한다.
 - 색상만으로 선택·오류를 표현하지 않고 shape, label, icon을 함께 사용한다.
 - 본문 surface에는 gradient, glass, noise를 사용하지 않는다.
 - 한 화면의 강조색은 active mode와 focus indication에만 제한한다.
@@ -80,6 +79,7 @@ Intent Memo는 조용한 종이 책상처럼 느껴져야 한다. 크롬은 낮�
 
 ### Grid
 
+- macOS window는 38px overlay titlebar와 나머지 app content의 2-row shell이다. titlebar 왼쪽에는 `Intent Memo`, 창의 절대 중앙에는 현재 문서 제목을 한 줄 ellipsis로 표시한다.
 - Desktop 기본: folder 216px, document list 280px, content는 나머지.
 - 각 pane은 독립 scroll owner이며 flex child에 `min-inline-size: 0`, `min-block-size: 0`을 적용한다.
 - rendered body의 읽기 폭은 최대 880px, editor source 폭은 최대 960px다.
@@ -88,14 +88,22 @@ Intent Memo는 조용한 종이 책상처럼 느껴져야 한다. 크롬은 낮�
 ### Rules
 
 - pane separator는 1px border만 사용한다.
-- 문서 list row는 56px이며 제목 1줄과 updated 날짜만 표시한다.
+- 문서 list row는 내용 기반 높이이며 제목 1줄, 본문 스니펫 최대 2줄, updated 날짜를 표시한다.
 - content 하단에는 최소 96px의 읽기 여백을 둔다.
 
 ## 5. Components
 
+### WindowTitleBar
+
+- native traffic lights는 유지하고 Tauri overlay titlebar의 drag region 위에 제품명과 현재 문서 제목만 표시한다.
+- 제품명 `Intent Memo`는 traffic lights 다음 왼쪽에 고정하고, 현재 문서 제목은 pane 폭과 무관한 창의 절대 중앙에 둔다.
+- 문서가 없으면 중앙 제목은 비워 두며 별도 breadcrumb·path·action을 추가하지 않는다.
+- 높이는 38px, 하단은 `--border` 1px separator, text는 `--type-xs`와 한 줄 ellipsis를 사용한다.
+
 ### AppShell
 
 - 상태: onboarding, loading, ready, fatal error.
+- 클린 onboarding은 Human/AI switcher를 먼저 제공하고 active space의 root만 OS folder picker로 요청한다. 두 root에는 기본 위치가 없다.
 - ready 상태만 `FolderPane`, `DocumentList`, `ContentPane`을 렌더링한다.
 
 ### PaneHeader
@@ -106,45 +114,49 @@ Intent Memo는 조용한 종이 책상처럼 느껴져야 한다. 크롬은 낮�
 ### FolderTreeItem
 
 - 상태: rest, hover, selected, drag-over, focus-visible.
+- 최상위 row는 고정 `Library` label 대신 선택한 root directory의 basename을 사용한다.
 - depth는 padding token으로 표현하고 folder icon과 이름을 제공한다.
+- selected row는 7px radius와 `--space-tint`/`--space-text`를 사용하며 숫자 count는 표시하지 않는다.
 
 ### DocumentRow
 
-- 제목과 updated 날짜만 표시한다.
+- 제목, frontmatter를 제외한 본문 스니펫 최대 2줄, updated 날짜를 표시한다.
 - 상태: rest, hover, selected, dragging, focus-visible.
-- selected background는 pane edge에서 6px 안쪽인 pill surface다.
+- selected background는 pane edge에서 6px 안쪽인 9px radius `--space-tint` pill이고 제목은 `--space-text`다.
 
-### ModeSwitch
+### ModeCycleButton
 
-- `Edit`, `View` 두 button의 segmented control.
-- `aria-pressed`로 active 상태를 노출한다.
+- `PencilLine`(Edit), `Eye`(View), `Columns2`(Split) 중 현재 mode icon 하나만 표시한다.
+- tab row 우측 끝에 고정하고 click할 때 `Edit → View → Split(Edit | View) → Edit`로 순환한다.
+- 현재 mode와 다음 mode를 `aria-label`·tooltip로 설명하고 별도 content header를 만들지 않는다.
 
 ### SpaceSwitcher
 
-- `Intent`, `Docs` 두 button의 segmented toggle이며 icon과 label을 함께 사용한다.
-- left pane 기본 variant는 보조 문구 `나의 의도` / `참고 문서`를 제공한다.
-- folder pane이 숨겨지면 content header에 current space icon+label compact binary toggle을 제공한다.
-- active segment만 `--accent`를 사용하며 공간별 theme·surface 색상은 바꾸지 않는다.
-- 상태: rest, hover, active, focus-visible, saving-disabled. `aria-pressed`와 전환 대상 `aria-label`을 제공한다.
+- `✎ Human ⟶ ⧉ AI` 두 radio와 흐름 화살표를 사용한다. 내부 키는 `intent`/`docs`로 유지한다.
+- active segment는 `--space-tint`/`--space-text`, 비활성은 뉴트럴을 사용한다.
+- sidebar variant 아래에는 경로 끝부분과 최종 폴더를 강조한 clickable root 표시줄을 둔다.
+- Human/AI 전환은 sidebar에만 둔다. content pane에는 현재 공간 label을 반복하지 않는다.
+- 상태: rest, hover, active, focus-visible, saving-disabled. radiogroup/radio semantics와 전환 대상 `aria-label`을 제공한다.
 
-### LayoutCycleButton
+### PaneLayoutButton
 
-- content header에는 pane마다 하나씩 둔 방향성 icon 대신 단일 cyclic control만 사용한다.
-- `RefreshCw`와 현재 pane 수 `3`·`2`·`1`을 함께 표시하고 click할 때 `3-pane → 2-pane → content-only → 3-pane`으로 전환한다.
-- 42×30px hit area, border token, current/next state를 설명하는 `aria-label`과 tooltip을 제공한다.
+- tab row 맨 왼쪽, 첫 tab 바로 앞에 `PanelLeft` icon-only control 하나를 둔다.
+- 숫자나 cycle arrow를 노출하지 않고 click할 때 `3-pane → 2-pane → content-only → 3-pane`으로 전환한다.
+- 30×30px hit area와 current/next state를 설명하는 `aria-label`·tooltip을 제공한다.
 
-### BaseFolderList
+### ActiveRoot
 
-- folder pane 하단에 Intent·Docs 두 base folder를 2개 행으로 함께 표시한다. 각 행은 space icon, label, 말줄임 경로로 구성되고 click하면 해당 root의 folder picker를 연다.
-- 현재 space 행은 `--selection` surface와 text weight로 구분하되 별도 theme은 사용하지 않는다.
-- folder pane이 숨겨진 상태에서는 content header에 현재 space label·root를 표시하는 한 줄 control을 유지한다.
-- responsive CSS만으로 pane을 숨기지 않는다. DOM의 persisted layout state와 화면이 달라져 space switcher가 사라지는 상태를 만들지 않는다.
+- sidebar에서는 현재 공간의 root만 SpaceSwitcher 바로 아래 표시한다. 부모 경로는 말줄임·muted, 최종 폴더는 `--space-text`·bold다.
+- 아직 root가 없는 onboarding에서도 같은 switcher로 Human/AI를 전환할 수 있으며, active space의 folder 선택 action만 표시한다.
+- folder pane이 숨겨진 상태에서도 content toolbar에는 root를 반복하지 않는다. pane icon으로 sidebar를 다시 연 뒤 root를 변경한다.
+- 클릭은 해당 Human/AI folder picker를 연다. 두 root를 함께 나열하지 않는다.
 
 ### TabBar / TabItem
 
-- content pane 상단 고정 1줄이며 제목과 닫기 button만 표시한다.
+- content pane 상단 고정 1줄이며 leading pane control, scroll 가능한 tab list, 우측 고정 actions로 나눈다.
+- 순서는 `pane control | tabs | save status | mode cycle`이며 mode icon이 항상 맨 오른쪽이다.
 - 상태: rest, hover, active, dirty/saving/error, focus-visible.
-- active tab은 shape와 text weight로도 구분하고, overflow는 가로 scroll로 처리한다.
+- active tab은 `--space-accent` 2px 하단선과 text weight로 구분하고, overflow는 가로 scroll로 처리한다.
 - 닫기 button은 30px hit area와 문서 제목을 포함한 `aria-label`을 사용한다.
 
 ### ContextMenu
@@ -170,11 +182,13 @@ Intent Memo는 조용한 종이 책상처럼 느껴져야 한다. 크롬은 낮�
 ### MarkdownEditor
 
 - CodeMirror root가 content scroll owner가 되며 source text 이외의 toolbar는 없다.
+- syntax tree의 Markdown marker node만 `--space-text`로 표시하고 heading·paragraph text는 뉴트럴을 유지한다. caret와 selection은 공간색을 사용한다.
 - 상태: ready, saving, saved, conflict/error.
 
 ### MarkdownView
 
 - prose hierarchy, GFM table/code/list를 지원하며 interactive editor control은 없다.
+- Split mode에서는 MarkdownEditor와 MarkdownView가 동일 폭의 두 column을 소유하고 각자 scroll한다.
 
 ### InlineNotice
 
@@ -230,6 +244,6 @@ Intent Memo는 조용한 종이 책상처럼 느껴져야 한다. 크롬은 낮�
 
 ### Accepted Debt
 
-- v0.1은 사용자 조절 typography와 theme UI를 제공하지 않는다.
+- v0.2는 사용자 조절 typography는 제공하지 않지만 Light·Charcoal·Dark·System theme을 제공한다.
 - Windows IME는 macOS 첫 release gate 밖이며 Windows 배포 전 별도 검증한다.
 - v0.2는 tab 전환·닫기와 space 전환 전용 shortcut을 추가하지 않는다. visible SpaceSwitcher와 tab close button을 우선한다.

@@ -37,14 +37,17 @@ The filesystem is the database. Filenames are document titles. Frontmatter conta
 
 ## UI Contract
 
-- Three panes: folders, documents, content, with `Intent | Docs` space switching in the folder pane.
-- Intent uses existing `libraryRoot`; Docs uses optional `docsRoot`. Both are read-write and use `Edit | View`; Intent opens in Edit and Docs in View.
-- The content pane has a one-line per-space tab bar; no hybrid preview or toolbar.
+- Three panes: folders, documents, content, with user-facing `Human | AI` space switching (`intent`/`docs` internal keys remain unchanged).
+- Clean settings leave both `libraryRoot` and `docsRoot` unset. Onboarding lets the user choose Human or AI first, then select only that space's folder. Both roots are independently persisted, read-write, and cycle `Edit → View → Split(Edit | View)`; Human opens in Edit and AI in View.
+- The content pane has one top row: an icon-only pane control, scrollable per-space tabs, save status, and a far-right icon-only mode control; no second header.
+- The macOS overlay titlebar keeps native traffic lights, shows `Intent Memo` at the left, and centers the active document title over the whole window. It contains no document actions.
 - Rename, move, and Trash live in keyboard-accessible document/folder context menus.
-- When the folder pane is hidden, the content header retains a compact icon+label space toggle.
-- One layout button cycles three panes, two panes, and content-only; the folder pane lists both configurable base folders and the compact header keeps the active root visible.
+- Human/AI switching lives only in the sidebar so the writing surface does not repeat the current space.
+- An icon-only pane button immediately before the tabs cycles three panes, two panes, and content-only. The sidebar alone owns the active root display and folder picker.
+- The folder tree root and root move destination use the selected directory basename; never present a hardcoded `Library` default.
 - `⌘1` toggles folders while the list is visible; `⌘2` toggles list plus folders.
-- OS color mode and product typography are fixed; only Intent and Docs locations are configurable.
+- The document list uses content-height rows with title, up to two snippet lines, and updated date; folder rows have no numeric counts.
+- Appearance offers Light (default), Charcoal, Dark, and System themes; System follows the OS color mode.
 - Reuse tokens and primitives from `DESIGN.md`. The development showcase is `?showcase=1`.
 
 ## Change Rules

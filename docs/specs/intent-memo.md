@@ -12,16 +12,16 @@ Intent Memo는 AI 시대에 한 인간이 자신의 생각과 의도를 직접 �
 
 ## 2. v0.2 성공 조건
 
-- 기존 `libraryRoot`는 사용자가 직접 작성하는 Intent 원본 공간으로 유지된다.
-- 사용자가 별도 `docsRoot`를 선택해 참고·편집할 Markdown Docs 공간을 사용할 수 있다.
+- 기존 `libraryRoot`는 사용자가 직접 의도와 취향을 작성하는 Human 원본 공간으로 유지된다.
+- 사용자가 별도 `docsRoot`를 선택해 AI가 만든 Markdown 결과를 읽고 필요할 때 편집하는 AI 공간을 사용할 수 있다.
 - 두 공간의 root와 임의 깊이 하위 폴더에 있는 `.md` 문서를 탐색한다.
 - 파일과 폴더를 생성·이름 변경·이동하고 시스템 휴지통으로 삭제할 수 있다.
 - 문서는 Markdown syntax highlighting이 있는 소스 편집기에서 작성하고 자동 저장된다.
-- 두 공간 모두 같은 문서를 `Edit | View`로 전환하며, Intent는 Edit, Docs는 View로 먼저 열린다.
+- 두 공간 모두 같은 문서를 `Edit → View → Split(Edit | View)`로 순환하며, Human은 Edit, AI는 View로 먼저 열린다.
 - 공간별 tab set으로 여러 문서를 열고 재시작 후 복원할 수 있다.
 - rename·move·Trash는 문서·폴더 항목의 keyboard-accessible context menu에서 실행한다.
 - 외부 변경이나 경계 이탈이 감지되면 원본을 조용히 덮어쓰거나 손상하지 않는다.
-- 클린 설치에서 library 선택 전에는 workspace에 진입하지 않는다.
+- 클린 설치에서는 Human·AI 모두 기본 root를 정하지 않으며, 사용자가 먼저 사용할 공간과 폴더를 직접 선택한다.
 
 ## 3. 제품 정체성
 
@@ -39,9 +39,9 @@ Intent Memo는 AI 시대에 한 인간이 자신의 생각과 의도를 직접 �
 
 ### 포함
 
-- Intent용 기존 read-write `libraryRoot`
-- Docs용 신규 read-write `docsRoot`
-- `Intent | Docs` space switcher와 공간별 목적·기본 mode
+- Human용 기존 read-write `libraryRoot` (내부 `intent` key 유지)
+- AI용 신규 read-write `docsRoot` (내부 `docs` key 유지)
+- `✎ Human ⟶ ⧉ AI` space switcher와 공간별 목적·기본 mode
 - root-level 및 중첩 폴더 Markdown 탐색
 - 파일·폴더 create, rename, move
 - 파일·폴더 system Trash 이동
@@ -54,8 +54,9 @@ Intent Memo는 AI 시대에 한 인간이 자신의 생각과 의도를 직접 �
 - 문서·폴더 context menu 기반 rename, move, system Trash
 - 3-pane workspace: 폴더, 문서 목록, content
 - pane 단축키: `⌘1` 폴더 pane 토글, `⌘2` 문서 목록과 폴더 pane을 함께 접어 content-only 전환
-- Intent·Docs 경로 선택·변경
-- OS light/dark 색상 모드와 고정 제품 typography
+- Human·AI active root 표시·경로 선택·변경
+- 제목·본문 스니펫 최대 2줄·날짜로 구성된 문서 목록
+- Light 기본·Charcoal·Dark·System 테마와 고정 제품 typography
 
 ### 제외
 
@@ -66,7 +67,7 @@ Intent Memo는 AI 시대에 한 인간이 자신의 생각과 의도를 직접 �
 - LLM launcher, chat, embedding, index, graph, backlink, wiki
 - repo 연결, file mention, data export
 - backend, 동기화, 계정
-- theme, font size, 언어 등 appearance 설정 UI
+- font size, 언어 등 추가 appearance 설정 UI
 - 기존 PromptPad library·settings migration
 - 여러 workspace profile 동시 관리
 - 자동 생성·자동 갱신되는 read-only AI 관리 계층
@@ -76,19 +77,20 @@ Intent Memo는 AI 시대에 한 인간이 자신의 생각과 의도를 직접 �
 
 ### 5.1 첫 실행
 
-앱은 저장된 `libraryRoot`가 없으면 Intent onboarding에서 OS 폴더 선택기를 표시한다. 사용자가 유효한 폴더를 선택하기 전에는 빈 workspace를 열지 않는다. 기존 settings에는 `docsRoot: null`, `activeSpace: "intent"`를 default로 적용해 기존 원본과 의미를 유지한다.
+클린 settings는 `libraryRoot: null`, `docsRoot: null`, `activeSpace: "intent"`, `theme: "light"`로 시작한다. onboarding에서도 Human/AI switcher를 항상 제공하므로 사용자는 어느 공간을 먼저 연결할지 선택할 수 있다. active space의 root가 없을 때만 해당 공간의 OS 폴더 선택을 요구하며, 유효한 폴더를 선택하기 전에는 빈 workspace를 열지 않는다.
 
-Docs에 처음 진입할 때 `docsRoot`가 없으면 Docs 공간 안에서 폴더 선택을 요구한다. 선택 전에는 Docs workspace를 열지 않으며 선택한 두 root와 active space는 재시작 후 복원한다.
+Human과 AI는 서로 독립적으로 폴더를 선택한다. 앱은 `Library` 같은 기본 위치나 기본 폴더명을 만들거나 가정하지 않는다. 선택한 root, active space, theme은 재시작 후 복원하며 아직 선택하지 않은 다른 공간의 root는 `null`로 유지한다.
 
 ### 5.2 Workspace
 
-1. folder pane 상단의 icon+label `Intent | Docs` switcher가 현재 space를 표시하고 전환한다. 보조 문구는 `나의 의도` / `참고 문서`다.
-2. folder pane은 active space root의 디렉토리 트리를 표시한다.
-3. 문서 목록 pane은 선택 폴더의 Markdown 문서를 제목과 updated 날짜만으로 표시한다.
-4. content pane은 공간별 tab bar, 선택 문서의 `Edit | View`, 문서별 저장 상태를 제공한다.
-5. folder pane이 숨겨지면 content header에 current space icon+label compact toggle을 제공한다.
-6. folder pane 하단에는 Intent·Docs 두 base folder의 위치를 함께 표시하고 각각 변경할 수 있다. folder pane이 숨겨져도 content header에서 현재 space의 base folder 위치를 확인·변경할 수 있다.
-7. content header의 단일 layout control은 `3-pane → folder가 접힌 2-pane → content-only → 3-pane` 순서로 순환한다.
+1. folder pane 상단의 `✎ Human ⟶ ⧉ AI` radio switcher가 현재 space를 표시하고 전환한다.
+2. folder pane은 active space root의 디렉토리 트리를 표시하고, 트리 최상위 이름에는 고정된 `Library` 대신 사용자가 선택한 폴더의 최종 이름을 사용한다.
+3. switcher 아래 active root 표시줄은 경로 끝부분과 최종 폴더를 강조하며 클릭 시 해당 root를 변경한다.
+4. 문서 목록 pane은 선택 폴더의 Markdown 문서를 제목, frontmatter를 제외한 본문 스니펫 최대 2줄, updated 날짜로 표시한다. 현재 visible 문서만 별도 batch IPC로 읽고 `path + updatedMs`로 cache한다.
+5. content pane 상단은 한 줄만 사용한다. 맨 왼쪽 pane icon 다음에 공간별 tab bar를 두고, 우측에는 저장 상태와 단일 mode icon을 배치한다. mode icon은 `Edit → View → Split(Edit | View)`로 순환하며 항상 맨 오른쪽에 고정한다. active tab 하단선과 선택 행은 Human red/AI blue 공간색을 사용한다.
+6. macOS native traffic lights를 유지한 38px overlay titlebar를 사용한다. `Intent Memo`는 왼쪽에, 현재 문서 제목은 pane 구성과 무관한 창 중앙에 표시하며 action이나 경로는 추가하지 않는다.
+7. Human/AI 전환과 active root 확인·변경은 folder pane에서만 제공한다. content pane에는 공간·root label을 반복하지 않으며 pane icon으로 folder pane을 다시 열 수 있다.
+8. 첫 tab 바로 앞의 숫자 없는 `PanelLeft` icon control은 `3-pane → folder가 접힌 2-pane → content-only → 3-pane` 순서로 순환한다.
 
 `⌘1`은 폴더 pane만 독립적으로 토글한다. `⌘2`로 문서 목록을 접으면 폴더 pane도 함께 접혀 content-only 상태가 된다. 문서 목록을 다시 펼칠 때 이전 폴더 pane 상태를 복원한다. pane 상태는 앱 재시작 후 복원한다.
 
@@ -96,10 +98,10 @@ Docs에 처음 진입할 때 `docsRoot`가 없으면 Docs 공간 안에서 폴�
 
 ### 5.3 문서 편집
 
-- Edit mode는 CodeMirror 6 직접 통합으로 구현하며 Markdown syntax highlighting만 제공한다.
+- Edit mode는 CodeMirror 6 직접 통합으로 구현하며 syntax tree의 Markdown marker만 공간색으로 강조하고 heading·본문 text는 뉴트럴을 유지한다.
 - IME 조합 중에는 autosave나 외부 state 동기화가 조합 입력을 끊지 않는다.
 - View mode는 저장 대상과 같은 본문을 Markdown으로 렌더링한다.
-- Intent에서 새 tab은 Edit, Docs에서 새 tab은 View로 시작하며 사용자가 바꾼 mode는 tab이 열려 있는 동안 유지한다.
+- Human에서 새 tab은 Edit, AI에서 새 tab은 View로 시작한다. 단일 mode icon은 Edit, View, 동일 폭 2-column의 Split(Edit | View)을 순환하며 사용자가 바꾼 mode는 tab이 열려 있는 동안 유지한다.
 - tab set과 active tab은 space별로 독립적이며 재시작 시 복원한다. 존재하지 않는 경로는 복원에서 제외한다.
 - tab 전환은 이전 tab의 background save를 시작하되 막지 않는다. tab 닫기는 해당 tab 저장 성공 후 진행한다.
 - 공간 전환과 앱 종료는 모든 pending save와 dirty 문서 저장이 성공한 경우에만 진행한다. 실패하면 현재 공간·tab·buffer를 유지한다.
@@ -160,10 +162,10 @@ updated: 2026-08-02T03:04:05.000Z
 
 ## 9. 장기 확장 경계
 
-v0.2는 사용자가 직접 소유하고 편집하는 두 종류의 폴더를 독립 경로로 제공한다.
+v0.2는 사용자가 직접 소유하고 편집하는 두 종류의 폴더를 독립 경로로 제공한다. 사용자 표시명은 Human/AI이고 내부 key와 저장 필드는 호환성을 위해 유지한다.
 
-- Intent `libraryRoot`: 인간이 직접 작성하는 canonical source-of-truth, editable
-- Docs `docsRoot`: 사용자가 선택한 참고·프로젝트 문서, editable
+- Human `libraryRoot` (`intent`): 인간이 직접 작성하는 canonical source-of-truth, editable
+- AI `docsRoot` (`docs`): 사용자의 의도와 취향으로 AI가 만든 결과를 읽고 필요하면 수정하는 공간, editable
 
 자동 생성·자동 갱신되는 AI 관리 폴더는 여전히 후속 범위이며, 도입 시 Intent 원본을 대체하지 않는 derived read-only 계층으로 분리한다. 현재 Docs는 그 계층이 아니라 사용자 선택형 read-write 공간이다.
 
@@ -181,6 +183,6 @@ v0.2는 사용자가 직접 소유하고 편집하는 두 종류의 폴더를 �
 - frontend와 filesystem 경계 회귀 테스트 통과
 - Rust format, clippy, tests 통과
 - Tauri production build 통과
-- 실제 앱에서 Intent onboarding, Docs 폴더 지정, 두 root의 root/nested CRUD, context menu keyboard, rename/move collision, external-change conflict, autosave, 공간별 Edit/View, 다중 tab, pane 단축키, 재시작 복원 확인
+- 실제 앱에서 Human onboarding, AI 폴더 지정, 두 root의 root/nested CRUD, context menu keyboard, rename/move collision, external-change conflict, autosave·snippet 갱신, 공간별 Edit/View, 다중 tab, pane 단축키, 테마 4종, 재시작 복원 확인
 - 다중 dirty/pending save 상태에서 space 전환·window close가 모든 저장을 기다리고 부분 실패 시 state를 유지하는지 확인
-- OS light/dark 각각에서 3-pane, content-only compact space toggle, tab overflow, empty/error 상태의 가독성과 한글 조판 확인
+- Light·Charcoal·Dark·System 각각에서 3-pane, content-only compact space toggle·active root, tab overflow, empty/error 상태의 가독성과 한글 조판 확인

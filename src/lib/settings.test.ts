@@ -24,6 +24,15 @@ import { loadSettings, nextPaneLayout, saveSettings } from "./settings";
 describe("settings", () => {
   beforeEach(() => storedValues.clear());
 
+  it("starts without a Human or AI root when the store is empty", async () => {
+    // Given: no persisted settings on first launch.
+    // When / Then: loading settings must not invent either filesystem root.
+    await expect(loadSettings()).resolves.toMatchObject({
+      libraryRoot: null,
+      docsRoot: null,
+    });
+  });
+
   it("loads a v0.1 store into the Intent space without moving its library", async () => {
     storedValues.set("libraryRoot", "/memo/intent");
     storedValues.set("folderPaneOpen", false);
@@ -35,6 +44,7 @@ describe("settings", () => {
       activeSpace: "intent",
       folderPaneOpen: false,
       listPaneOpen: true,
+      theme: "light",
       tabSessions: {
         intent: { paths: [], activePath: null },
         docs: { paths: [], activePath: null },
@@ -49,6 +59,7 @@ describe("settings", () => {
       activeSpace: "docs",
       folderPaneOpen: true,
       listPaneOpen: false,
+      theme: "system",
       tabSessions: {
         intent: { paths: ["purpose.md"], activePath: "purpose.md" },
         docs: { paths: ["reference.md"], activePath: "reference.md" },
@@ -61,9 +72,36 @@ describe("settings", () => {
       activeSpace: "docs",
       folderPaneOpen: true,
       listPaneOpen: false,
+      theme: "system",
       tabSessions: {
         intent: { paths: ["purpose.md"], activePath: "purpose.md" },
         docs: { paths: ["reference.md"], activePath: "reference.md" },
+      },
+    });
+  });
+
+  it("falls back only the invalid theme while preserving valid workspace settings", async () => {
+    storedValues.set("libraryRoot", "/memo/intent");
+    storedValues.set("docsRoot", "/memo/docs");
+    storedValues.set("activeSpace", "docs");
+    storedValues.set("folderPaneOpen", false);
+    storedValues.set("listPaneOpen", true);
+    storedValues.set("theme", "neon");
+    storedValues.set("tabSessions", {
+      intent: { paths: ["purpose.md"], activePath: "purpose.md" },
+      docs: { paths: ["result.md"], activePath: "result.md" },
+    });
+
+    await expect(loadSettings()).resolves.toEqual({
+      libraryRoot: "/memo/intent",
+      docsRoot: "/memo/docs",
+      activeSpace: "docs",
+      folderPaneOpen: false,
+      listPaneOpen: true,
+      theme: "light",
+      tabSessions: {
+        intent: { paths: ["purpose.md"], activePath: "purpose.md" },
+        docs: { paths: ["result.md"], activePath: "result.md" },
       },
     });
   });
