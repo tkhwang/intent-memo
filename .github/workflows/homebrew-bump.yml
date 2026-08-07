@@ -2,6 +2,9 @@ name: Bump Homebrew Cask
 
 on:
   workflow_call:
+    secrets:
+      TAP_GITHUB_TOKEN:
+        required: true
     inputs:
       tag:
         description: "Release tag (vX.Y.Z)"
