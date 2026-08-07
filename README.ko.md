@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <img src="./assets/readme/hero-ko.svg" width="100%" alt="Intent Memo(의도 메모) — AI에게 맡기기 전에, 나의 생각과 의도를 먼저 기록하는 미니멀 Markdown 메모 앱. 폴더, 문서 목록, 본문으로 구성된 3-pane workspace.">
+  <img src="./assets/readme/hero-ko.svg" width="100%" alt="Intent Memo(의도 메모) — AI에게 맡기기 전에, 나의 생각과 의도를 먼저 기록하는 미니멀 Markdown 메모 앱. Human → AI 공간 switcher와 폴더, 문서 목록, 본문으로 구성된 3-pane workspace.">
 </p>
 
 
@@ -32,21 +32,21 @@
 
 ## v0.2
 
-- 나의 목적을 기록하는 **Intent**와 참고 자료를 읽고 다듬는 **Docs** 두 Markdown 공간
-- 공간별 독립 로컬 root와 left pane switcher, pane을 접어도 유지되는 compact 전환 control
-- 여러 문서를 여는 tab, 공간별 session 복원, tab별 `Edit` / rendered `View`
+- 내가 직접 쓰는 의도를 담는 **Human**과 그 의도로 AI가 만든 결과를 읽는 **AI** 두 Markdown 공간
+- 공간별 독립 로컬 root, sidebar 상단에 항상 보이는 `Human → AI` switcher — 3-pane에서는 folder pane, folder pane을 접은 2-pane에서는 문서 목록 위
+- 여러 문서를 여는 tab, 공간별 session 복원, tab별 `Edit → View → Split(Edit | View)` 순환 — Human은 Edit, AI는 View로 시작
 - 문서·폴더 생성, 이름 변경, 이동, 시스템 휴지통 이동
 - 이름 변경·이동·휴지통 동작을 제공하는 keyboard 접근 가능 context menu
 - CodeMirror 6 Markdown syntax highlighting
 - 문서별 500ms autosave, atomic write, 외부 변경 충돌 보호, 공간 전환·앱 종료 전 save barrier
 - `⌘1` 폴더 pane, `⌘2` content-only 전환
-- OS light/dark와 고정 CJK typography
+- Light · Charcoal · Dark · System 테마와 고정 CJK typography
 
 검색, tags, Markdown toolbar, 이미지, wiki/backlink, LLM runtime과 AI 관리 폴더는 후속 범위입니다.
 
 ## Data
 
-첫 실행에서 Intent `libraryRoot`를 선택하고, Docs에 처음 진입할 때 별도 `docsRoot`를 선택합니다. 파일명은 제목의 source of truth이며, 새 문서는 최소 frontmatter와 빈 본문으로 시작합니다.
+첫 실행에서 Human 공간의 `libraryRoot`를 선택하고, AI 공간에 처음 진입할 때 별도 `docsRoot`를 선택합니다. 파일명은 제목의 source of truth이며, 새 문서는 최소 frontmatter와 빈 본문으로 시작합니다.
 
 ```markdown
 ---

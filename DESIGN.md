@@ -13,15 +13,11 @@
 
 Intent Memo는 조용한 종이 책상처럼 느껴져야 한다. 크롬은 낮은 대비의 따뜻한 회색 표면으로 물러나고, 사용자가 쓴 Markdown과 현재 선택 상태만 선명하게 남는다.
 
-기억에 남아야 할 순간은 `✎ Human ⟶ ⧉ AI`가 인간의 의도에서 AI 결과로 이어지는 흐름을 명확히 보여주고, `⌘2`로 양쪽 pane이 사라져 글만 남는 전환이다. 장식 애니메이션 대신 목적과 content 집중의 상태 변화가 제품의 signature interaction이다.
+기억에 남아야 할 순간은 `Brain Human ⟶ Bot AI`가 인간의 의도에서 AI 결과로 이어지는 흐름을 명확히 보여주고, `⌘2`로 양쪽 pane이 사라져 글만 남는 전환이다. 장식 애니메이션 대신 목적과 content 집중의 상태 변화가 제품의 signature interaction이다.
 
 ### App Icon
 
-- 상징의 중심은 AI나 자동화가 아니라 인간이 스스로 남기는 의도다.
-- 따뜻한 종이 메모와 자연스러운 세 줄의 손글씨 필획으로 `인간이 직접 남긴 생각`을 표현한다.
-- 마지막 짧은 필획을 느슨한 terracotta 원으로 강조해 여러 생각 중 스스로 선택한 `의도`를 나타낸다.
-- arrow·chart·graph·robot·brain·sparkle·chat bubble·문자 로고는 사용하지 않는다. AI보다 메모와 인간 저작성이 먼저 읽혀야 한다.
-- macOS rounded-square silhouette 안에서 16px에서도 메모와 강조 표시가 구분되어야 하며, 본문 UI와 같은 warm neutral·graphite·terracotta 계열을 사용한다.
+- App icon의 symbol·flow·size 계약은 Components의 `AppIcon` 절을 단일 canonical rule로 사용한다.
 
 ## 2. Color
 
@@ -132,29 +128,37 @@ Intent Memo는 조용한 종이 책상처럼 느껴져야 한다. 크롬은 낮�
 
 ### SpaceSwitcher
 
-- `✎ Human ⟶ ⧉ AI` 두 radio와 흐름 화살표를 사용한다. 내부 키는 `intent`/`docs`로 유지한다.
+- `Human Brain · Bot AI` 순서로 Lucide `Brain`/`Bot`을 중앙에 둔 두 radio를 사용한다. 가운데 화살표는 active space에서 target space를 향해 Human 선택 시 `Human → AI`, AI 선택 시 `Human ← AI`로 전환한다. 내부 키는 `intent`/`docs`로 유지한다.
 - active segment는 `--space-tint`/`--space-text`, 비활성은 뉴트럴을 사용한다.
 - sidebar variant 아래에는 경로 끝부분과 최종 폴더를 강조한 clickable root 표시줄을 둔다.
-- Human/AI 전환은 sidebar에만 둔다. content pane에는 현재 공간 label을 반복하지 않는다.
+- Human/AI 전환은 navigation sidebar에만 둔다. 3-pane에서는 folder pane, folder pane이 접힌 2-pane에서는 문서 목록 pane 상단에 full switcher를 하나만 표시하며 content pane에는 현재 공간 label을 반복하지 않는다.
+- switcher segment 위에는 `⌘1` badge를 겹치지 않는다. 단축키는 keyboard 동작으로만 유지한다.
 - 상태: rest, hover, active, focus-visible, saving-disabled. radiogroup/radio semantics와 전환 대상 `aria-label`을 제공한다.
+
+### AppIcon
+
+- 기존의 warm cream paper squircle, 촉감 있는 종이 질감, 부드러운 macOS shadow를 유지한다.
+- **Canonical symbol contract:** Human red `Brain`, AI slate-blue `Bot`, graphite memo와 이들을 잇는 화살표를 의도된 AppIcon symbol로 허용한다. 다른 generic AI 장식이나 텍스트는 추가하지 않는다.
+- 중앙 표식은 위 왼쪽 Brain, 위 오른쪽 Bot, 아래쪽 넓은 memo의 2행으로 구성한다. Brain에서 memo로 내려가고 memo에서 Bot으로 올라가는 U자형 단방향 흐름은 data/navigation 동작이 아니라 Human 생각이 memo를 거쳐 AI로 전달되는 제품 서사를 나타낸다.
+- 32px에서도 세 기호와 흐름이 구분되도록 단순한 선, 넉넉한 padding, 제한된 색을 사용한다.
 
 ### PaneLayoutButton
 
 - tab row 맨 왼쪽, 첫 tab 바로 앞에 `PanelLeft` icon-only control 하나를 둔다.
 - 숫자나 cycle arrow를 노출하지 않고 click할 때 `3-pane → 2-pane → content-only → 3-pane`으로 전환한다.
-- 30×30px hit area와 current/next state를 설명하는 `aria-label`·tooltip을 제공한다.
+- content header의 좌우 cycle control은 같은 42px edge cell을 사용하고 current/next state를 설명하는 `aria-label`·tooltip을 제공한다.
 
 ### ActiveRoot
 
-- sidebar에서는 현재 공간의 root만 SpaceSwitcher 바로 아래 표시한다. 부모 경로는 말줄임·muted, 최종 폴더는 `--space-text`·bold다.
+- sidebar에서는 현재 공간의 root만 SpaceSwitcher 바로 아래 중앙 정렬한다. 부모 경로와 최종 폴더는 하나의 연속된 path로 배치하고 같은 muted color를 사용하며, 부모 경로는 말줄임 처리하고 최종 폴더만 bold로 구분한다.
 - 아직 root가 없는 onboarding에서도 같은 switcher로 Human/AI를 전환할 수 있으며, active space의 folder 선택 action만 표시한다.
-- folder pane이 숨겨진 상태에서도 content toolbar에는 root를 반복하지 않는다. pane icon으로 sidebar를 다시 연 뒤 root를 변경한다.
+- folder pane이 숨겨진 2-pane fallback에는 root를 넘기지 않는다. keyboard `⌘1` 또는 pane icon으로 folder pane을 복원해 root를 확인·변경하며 content toolbar와 content-only에는 root를 반복하지 않는다.
 - 클릭은 해당 Human/AI folder picker를 연다. 두 root를 함께 나열하지 않는다.
 
 ### TabBar / TabItem
 
 - content pane 상단 고정 1줄이며 leading pane control, scroll 가능한 tab list, 우측 고정 actions로 나눈다.
-- 순서는 `pane control | tabs | save status | mode cycle`이며 mode icon이 항상 맨 오른쪽이다.
+- 순서는 `pane control | tabs | transient save status | mode cycle`이며 mode icon이 항상 맨 오른쪽이다. pane/mode cycle은 동일한 42px edge cell이고, save status는 dirty/saving/error 상태에서만 노출한다.
 - 상태: rest, hover, active, dirty/saving/error, focus-visible.
 - active tab은 `--space-accent` 2px 하단선과 text weight로 구분하고, overflow는 가로 scroll로 처리한다.
 - 닫기 button은 30px hit area와 문서 제목을 포함한 `aria-label`을 사용한다.

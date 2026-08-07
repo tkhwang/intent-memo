@@ -42,8 +42,8 @@ The filesystem is the database. Filenames are document titles. Frontmatter conta
 - The content pane has one top row: an icon-only pane control, scrollable per-space tabs, save status, and a far-right icon-only mode control; no second header.
 - The macOS overlay titlebar keeps native traffic lights, shows `Intent Memo` at the left, and centers the active document title over the whole window. It contains no document actions.
 - Rename, move, and Trash live in keyboard-accessible document/folder context menus.
-- Human/AI switching lives only in the sidebar so the writing surface does not repeat the current space.
-- An icon-only pane button immediately before the tabs cycles three panes, two panes, and content-only. The sidebar alone owns the active root display and folder picker.
+- Human/AI switching lives only in the navigation sidebar: the folder pane owns it in three-pane mode, and the document-list pane provides the single fallback when folders are collapsed in two-pane mode. The writing surface and content-only mode do not repeat the current space.
+- An icon-only pane button immediately before the tabs cycles three panes, two panes, and content-only. The folder pane alone owns the active root display and folder picker; `⌘1` remains a keyboard return path but is not shown as a badge on the switcher.
 - The folder tree root and root move destination use the selected directory basename; never present a hardcoded `Library` default.
 - `⌘1` toggles folders while the list is visible; `⌘2` toggles list plus folders.
 - The document list uses content-height rows with title, up to two snippet lines, and updated date; folder rows have no numeric counts.
