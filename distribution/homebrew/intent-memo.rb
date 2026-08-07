@@ -15,8 +15,6 @@ cask "intent-memo" do
     strategy :github_latest
   end
 
-  depends_on macos: ">= :high_sierra"
-
   app "IntentMemo.app"
 
   uninstall quit: "app.tkbetter.intentmemo"
