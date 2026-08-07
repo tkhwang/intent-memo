@@ -391,12 +391,9 @@ button:disabled {
   border-bottom: 1px solid var(--sidebar-border);
 }
 
-.space-header .shortcut-hint {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  color: var(--sidebar-muted);
-  font-size: var(--type-xs);
+.list-pane .space-header {
+  --sidebar-border: var(--border);
+  --sidebar-muted: var(--muted);
 }
 
 .space-switcher {
@@ -500,10 +497,6 @@ button:disabled {
   flex-direction: row;
   align-items: baseline;
   gap: 8px;
-}
-
-.shortcut-hint {
-  opacity: 0.7;
 }
 
 .folder-tree,
@@ -632,6 +625,7 @@ select {
   width: 100%;
   min-width: 0;
   align-items: baseline;
+  justify-content: center;
   margin-top: 8px;
   padding: 5px 8px;
   border-radius: 7px;
@@ -642,6 +636,13 @@ select {
   white-space: nowrap;
 }
 
+.root-path {
+  display: flex;
+  min-width: 0;
+  max-width: 100%;
+  align-items: baseline;
+}
+
 [data-theme="charcoal"] .root-row,
 [data-theme="dark"] .root-row {
   background: rgb(255 255 255 / 6%);
@@ -649,14 +650,13 @@ select {
 
 .root-row .root-parent {
   min-width: 0;
-  flex: 1;
+  flex: 0 1 auto;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .root-row .root-leaf {
   flex: none;
-  color: var(--space-text);
   font-weight: 650;
 }
 
@@ -707,17 +707,18 @@ select {
   display: flex;
   flex: 0 0 auto;
   align-items: center;
-  padding: 0 6px;
+  padding: 0;
   background: var(--content);
 }
 
 .tab-bar-leading {
+  width: 42px;
+  flex-basis: 42px;
   border-right: 1px solid var(--border);
 }
 
 .tab-bar-actions {
-  gap: 4px;
-  border-left: 1px solid var(--border);
+  gap: 0;
 }
 
 .tab-item {
@@ -790,23 +791,28 @@ select {
   font-weight: 750;
 }
 
+.header-cycle-button {
+  width: 42px;
+  height: 35px;
+  flex: 0 0 42px;
+  border-radius: 0;
+}
+
 .layout-cycle-button {
-  width: 30px;
-  flex-basis: 30px;
   color: var(--muted);
 }
 
 .mode-cycle-button {
-  width: 30px;
-  flex-basis: 30px;
+  border-left: 1px solid var(--border);
   color: var(--space-text);
 }
 
 .save-status {
-  min-width: 42px;
+  padding: 0 8px;
   color: var(--muted);
   font-size: var(--type-xs);
   text-align: right;
+  white-space: nowrap;
 }
 
 .save-status.error {

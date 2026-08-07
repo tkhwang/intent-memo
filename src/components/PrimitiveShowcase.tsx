@@ -132,7 +132,7 @@ export function PrimitiveShowcase() {
             leadingAction={
               <button
                 aria-label="Pane layout 변경"
-                className="icon-button layout-cycle-button"
+                className="icon-button header-cycle-button layout-cycle-button"
                 type="button"
               >
                 <PanelLeft aria-hidden="true" size={16} />
@@ -143,7 +143,7 @@ export function PrimitiveShowcase() {
             trailingActions={
               <button
                 aria-label="현재 Edit · 클릭하면 View"
-                className="icon-button mode-cycle-button"
+                className="icon-button header-cycle-button mode-cycle-button"
                 type="button"
               >
                 <PencilLine aria-hidden="true" size={16} />

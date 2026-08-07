@@ -478,7 +478,6 @@ function LibraryApp({ root, settings, onSettingsChange }: LibraryAppProps) {
                 onRootChange={() => void handleRootChange(settings.activeSpace)}
                 root={root}
               />
-              <span className="shortcut-hint">⌘1</span>
             </div>
             <header className="pane-header folder-header">
               <strong>Folders</strong>
@@ -528,6 +527,14 @@ function LibraryApp({ root, settings, onSettingsChange }: LibraryAppProps) {
 
         {settings.listPaneOpen && (
           <section className="pane list-pane">
+            {!folderVisible && (
+              <div className="space-header">
+                <SpaceSwitcher
+                  activeSpace={settings.activeSpace}
+                  onChange={changeSpace}
+                />
+              </div>
+            )}
             <header className="pane-header">
               <div>
                 <strong>
@@ -577,7 +584,7 @@ function LibraryApp({ root, settings, onSettingsChange }: LibraryAppProps) {
             leadingAction={
               <button
                 aria-label={layoutControl.label}
-                className="icon-button layout-cycle-button"
+                className="icon-button header-cycle-button layout-cycle-button"
                 data-layout={layoutControl.state}
                 onClick={() => updateLayout(nextPaneLayout(settings))}
                 title={layoutControl.label}
@@ -593,12 +600,16 @@ function LibraryApp({ root, settings, onSettingsChange }: LibraryAppProps) {
             trailingActions={
               modeControl ? (
                 <>
-                  <span className={`save-status ${workspace.saveStatus}`}>
-                    {saveLabel(workspace.saveStatus)}
-                  </span>
+                  {workspace.saveStatus === "dirty" ||
+                  workspace.saveStatus === "saving" ||
+                  workspace.saveStatus === "error" ? (
+                    <span className={`save-status ${workspace.saveStatus}`}>
+                      {saveLabel(workspace.saveStatus)}
+                    </span>
+                  ) : null}
                   <button
                     aria-label={modeControl.label}
-                    className="icon-button mode-cycle-button"
+                    className="icon-button header-cycle-button mode-cycle-button"
                     data-mode={workspace.activeDocument?.mode}
                     onClick={() => workspace.setMode(modeControl.next)}
                     title={modeControl.label}

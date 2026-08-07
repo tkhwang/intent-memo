@@ -1,4 +1,4 @@
-import { BookOpenText, MoveRight, PenLine } from "lucide-react";
+import { Bot, Brain, MoveLeft, MoveRight } from "lucide-react";
 import { type KeyboardEvent, useId, useRef, useState } from "react";
 import { formatRootDisplay } from "@/lib/rootDisplay";
 import type { Space } from "@/types/library";
@@ -13,8 +13,8 @@ type SpaceSwitcherProps = {
 };
 
 const spaceCopy = {
-  intent: { label: "Human", icon: PenLine },
-  docs: { label: "AI", icon: BookOpenText },
+  intent: { label: "Human", icon: Brain },
+  docs: { label: "AI", icon: Bot },
 } as const;
 
 const spaces = ["intent", "docs"] as const;
@@ -79,6 +79,7 @@ export function SpaceSwitcher({
   }
 
   const rootDisplay = root == null ? null : formatRootDisplay(root);
+  const FlowIcon = activeSpace === "intent" ? MoveRight : MoveLeft;
 
   return (
     <div className="space-switcher">
@@ -94,7 +95,7 @@ export function SpaceSwitcher({
           return (
             <div className="space-segment-slot" key={space}>
               {index > 0 && (
-                <MoveRight
+                <FlowIcon
                   aria-hidden="true"
                   className="space-flow-arrow"
                   size={13}
@@ -114,8 +115,17 @@ export function SpaceSwitcher({
                   type="radio"
                   value={space}
                 />
-                <Icon aria-hidden="true" size={14} />
-                <span>{entry.label}</span>
+                {space === "intent" ? (
+                  <>
+                    <span>{entry.label}</span>
+                    <Icon aria-hidden="true" size={14} />
+                  </>
+                ) : (
+                  <>
+                    <Icon aria-hidden="true" size={14} />
+                    <span>{entry.label}</span>
+                  </>
+                )}
               </label>
             </div>
           );
@@ -128,8 +138,10 @@ export function SpaceSwitcher({
           title={root ?? undefined}
           type="button"
         >
-          <span className="root-parent">{rootDisplay.parent}</span>
-          <span className="root-leaf">{rootDisplay.leaf}</span>
+          <span className="root-path">
+            <span className="root-parent">{rootDisplay.parent}</span>
+            <span className="root-leaf">{rootDisplay.leaf}</span>
+          </span>
         </button>
       )}
     </div>

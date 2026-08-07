@@ -41,7 +41,7 @@ Intent Memo는 AI 시대에 한 인간이 자신의 생각과 의도를 직접 �
 
 - Human용 기존 read-write `libraryRoot` (내부 `intent` key 유지)
 - AI용 신규 read-write `docsRoot` (내부 `docs` key 유지)
-- `✎ Human ⟶ ⧉ AI` space switcher와 공간별 목적·기본 mode
+- `Human Brain ⟶ Bot AI` space switcher와 공간별 목적·기본 mode
 - root-level 및 중첩 폴더 Markdown 탐색
 - 파일·폴더 create, rename, move
 - 파일·폴더 system Trash 이동
@@ -83,13 +83,13 @@ Human과 AI는 서로 독립적으로 폴더를 선택한다. 앱은 `Library` �
 
 ### 5.2 Workspace
 
-1. folder pane 상단의 `✎ Human ⟶ ⧉ AI` radio switcher가 현재 space를 표시하고 전환한다.
+1. folder pane 상단의 `Human Brain · Bot AI` radio switcher가 두 아이콘을 중앙에 두고 현재 space를 표시·전환한다. 가운데 화살표는 active space에서 target space를 향해 Human 선택 시 `Human → AI`, AI 선택 시 `Human ← AI`로 바뀐다.
 2. folder pane은 active space root의 디렉토리 트리를 표시하고, 트리 최상위 이름에는 고정된 `Library` 대신 사용자가 선택한 폴더의 최종 이름을 사용한다.
-3. switcher 아래 active root 표시줄은 경로 끝부분과 최종 폴더를 강조하며 클릭 시 해당 root를 변경한다.
+3. switcher 아래 active root 표시줄은 경로 끝부분을 가운데에 연속 표시하고 최종 폴더만 굵기로 구분하며, 클릭 시 해당 root를 변경한다.
 4. 문서 목록 pane은 선택 폴더의 Markdown 문서를 제목, frontmatter를 제외한 본문 스니펫 최대 2줄, updated 날짜로 표시한다. 현재 visible 문서만 별도 batch IPC로 읽고 `path + updatedMs`로 cache한다.
 5. content pane 상단은 한 줄만 사용한다. 맨 왼쪽 pane icon 다음에 공간별 tab bar를 두고, 우측에는 저장 상태와 단일 mode icon을 배치한다. mode icon은 `Edit → View → Split(Edit | View)`로 순환하며 항상 맨 오른쪽에 고정한다. active tab 하단선과 선택 행은 Human red/AI blue 공간색을 사용한다.
 6. macOS native traffic lights를 유지한 38px overlay titlebar를 사용한다. `Intent Memo`는 왼쪽에, 현재 문서 제목은 pane 구성과 무관한 창 중앙에 표시하며 action이나 경로는 추가하지 않는다.
-7. Human/AI 전환과 active root 확인·변경은 folder pane에서만 제공한다. content pane에는 공간·root label을 반복하지 않으며 pane icon으로 folder pane을 다시 열 수 있다.
+7. Human/AI 전환은 folder pane 상단에서 제공하고, folder pane이 접힌 2-pane에서는 문서 목록 pane 상단에 같은 switcher를 하나만 제공한다. active root 확인·변경은 folder pane 전용으로 유지하며, content pane과 content-only에는 공간·root label을 반복하지 않는다. switcher에는 `⌘1` badge를 표시하지 않고 keyboard `⌘1` 또는 content pane의 pane icon으로 folder pane을 다시 열 수 있다.
 8. 첫 tab 바로 앞의 숫자 없는 `PanelLeft` icon control은 `3-pane → folder가 접힌 2-pane → content-only → 3-pane` 순서로 순환한다.
 
 `⌘1`은 폴더 pane만 독립적으로 토글한다. `⌘2`로 문서 목록을 접으면 폴더 pane도 함께 접혀 content-only 상태가 된다. 문서 목록을 다시 펼칠 때 이전 폴더 pane 상태를 복원한다. pane 상태는 앱 재시작 후 복원한다.
@@ -185,4 +185,4 @@ v0.2는 사용자가 직접 소유하고 편집하는 두 종류의 폴더를 �
 - Tauri production build 통과
 - 실제 앱에서 Human onboarding, AI 폴더 지정, 두 root의 root/nested CRUD, context menu keyboard, rename/move collision, external-change conflict, autosave·snippet 갱신, 공간별 Edit/View, 다중 tab, pane 단축키, 테마 4종, 재시작 복원 확인
 - 다중 dirty/pending save 상태에서 space 전환·window close가 모든 저장을 기다리고 부분 실패 시 state를 유지하는지 확인
-- Light·Charcoal·Dark·System 각각에서 3-pane, content-only compact space toggle·active root, tab overflow, empty/error 상태의 가독성과 한글 조판 확인
+- Light·Charcoal·Dark·System 각각에서 3-pane/2-pane에는 Human/AI switcher가 정확히 하나 존재하고 active root는 3-pane folder pane에만 표시되는지 확인한다. content-only에는 switcher/root를 노출하지 않으며 tab overflow, empty/error 상태의 가독성과 한글 조판을 확인한다.

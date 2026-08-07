@@ -57,7 +57,9 @@ describe("SpaceSwitcher", () => {
   });
 
   it("shows Human and AI as a radio group with the active space", () => {
-    render(<SpaceSwitcher activeSpace="intent" onChange={vi.fn()} />);
+    const { container } = render(
+      <SpaceSwitcher activeSpace="intent" onChange={vi.fn()} />,
+    );
     expect(screen.getByRole("radiogroup", { name: "공간 선택" })).toBeDefined();
     expect(
       screen.getByRole("radio", { name: /Human/ }).getAttribute("aria-checked"),
@@ -65,6 +67,32 @@ describe("SpaceSwitcher", () => {
     expect(
       screen.getByRole("radio", { name: /AI/ }).getAttribute("aria-checked"),
     ).toBe("false");
+    expect(container.querySelector(".lucide-brain")).not.toBeNull();
+    expect(container.querySelector(".lucide-bot")).not.toBeNull();
+    expect(container.querySelector(".lucide-move-right")).not.toBeNull();
+
+    const humanVisibleContent = Array.from(
+      screen.getByRole("radio", { name: /Human/ }).closest("label")?.children ??
+        [],
+    ).filter((child) => child.tagName !== "INPUT");
+    const aiVisibleContent = Array.from(
+      screen.getByRole("radio", { name: /AI/ }).closest("label")?.children ??
+        [],
+    ).filter((child) => child.tagName !== "INPUT");
+    expect(humanVisibleContent.at(0)?.tagName).toBe("SPAN");
+    expect(humanVisibleContent.at(1)?.classList.contains("lucide-brain")).toBe(
+      true,
+    );
+    expect(aiVisibleContent.at(0)?.classList.contains("lucide-bot")).toBe(true);
+    expect(aiVisibleContent.at(1)?.tagName).toBe("SPAN");
+  });
+
+  it("points the flow arrow from the active AI space back to Human", () => {
+    const { container } = render(
+      <SpaceSwitcher activeSpace="docs" onChange={vi.fn()} />,
+    );
+    expect(container.querySelector(".lucide-move-left")).not.toBeNull();
+    expect(container.querySelector(".lucide-move-right")).toBeNull();
   });
 
   it("calls onChange when the inactive space is selected", async () => {
@@ -129,8 +157,9 @@ describe("SpaceSwitcher", () => {
   });
 
   it("emphasizes the root leaf and requests a root change", async () => {
+    // Given: a deep root whose final folder remains visually emphasized.
     const onRootChange = vi.fn();
-    render(
+    const { container } = render(
       <SpaceSwitcher
         activeSpace="intent"
         onChange={vi.fn()}
@@ -138,8 +167,17 @@ describe("SpaceSwitcher", () => {
         root="/Users/x/memo/intents"
       />,
     );
+
+    // When: the root row is rendered as a continuous path.
     const row = screen.getByRole("button", { name: /intents/ });
+
+    // Then: the parent and leaf stay adjacent inside one path wrapper.
     expect(row.title).toBe("/Users/x/memo/intents");
+    expect(container.querySelector(".root-path")?.textContent).toBe(
+      "…/memo/intents",
+    );
+    expect(container.querySelector(".root-path")?.children).toHaveLength(2);
+
     await userEvent.click(row);
     expect(onRootChange).toHaveBeenCalledTimes(1);
   });

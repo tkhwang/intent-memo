@@ -323,6 +323,11 @@ describe("content toolbar", () => {
     expect(layoutButton.parentElement).toBe(leading);
     expect(actions?.parentElement).toBe(tabBar);
     expect(actions?.lastElementChild).toBe(modeButton);
+    expect(actions?.children).toHaveLength(1);
+    expect(leading?.children).toHaveLength(1);
+    expect(layoutButton.classList.contains("header-cycle-button")).toBe(true);
+    expect(modeButton.classList.contains("header-cycle-button")).toBe(true);
+    expect(actions?.querySelector(".save-status")).toBeNull();
     expect(tab.parentElement?.getAttribute("role")).toBe("presentation");
     expect(closeButton.parentElement).toBe(tab.parentElement);
     expect(layoutButton.textContent).toBe("");
@@ -337,6 +342,22 @@ describe("content toolbar", () => {
 
     await user.click(modeButton);
     expect(testState.workspace.setMode).toHaveBeenCalledWith("view");
+  });
+
+  it("shows save status only while the document needs attention", async () => {
+    // Given: the active document is being saved.
+    testState.workspace.saveStatus = "saving";
+
+    // When: the content toolbar renders.
+    const { container } = render(<App />);
+    await screen.findByRole("button", {
+      name: "현재 Edit · 클릭하면 View",
+    });
+
+    // Then: the transient status remains visible outside the fixed cycle cell.
+    expect(container.querySelector(".save-status")?.textContent).toBe(
+      "저장 중",
+    );
   });
 
   it("does not add space or root labels when navigation panes are hidden", async () => {
@@ -385,6 +406,111 @@ describe("content toolbar", () => {
     expect(container.querySelector(".markdown-view")?.textContent).toContain(
       "Human intent",
     );
+  });
+});
+
+describe("pane navigation contract", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("shows one switcher without a root row in two-pane mode and switches after saving", async () => {
+    // Given: the document list is visible while the folder pane is collapsed.
+    testState.settings.folderPaneOpen = false;
+    testState.settings.listPaneOpen = true;
+    const calls: string[] = [];
+    vi.mocked(testState.workspace.persistAllOpenDocuments).mockImplementation(
+      async () => {
+        calls.push("persist");
+        return true;
+      },
+    );
+    vi.mocked(saveSettings).mockImplementation(async () => {
+      calls.push("settings");
+    });
+    const user = userEvent.setup();
+    const { container } = render(<App />);
+
+    // When: the user switches from Human to AI.
+    const switcher = await screen.findByRole("radiogroup", {
+      name: "공간 선택",
+    });
+    await user.click(screen.getByRole("radio", { name: /AI/ }));
+
+    // Then: the fallback stays navigation-only and saves before switching.
+    expect(
+      screen.getAllByRole("radiogroup", { name: "공간 선택" }),
+    ).toHaveLength(1);
+    expect(switcher.closest(".list-pane")).not.toBeNull();
+    expect(container.querySelector(".list-pane .root-row")).toBeNull();
+    expect(screen.queryByText("⌘1")).toBeNull();
+    await waitFor(() => expect(calls).toEqual(["persist", "settings"]));
+    expect(saveSettings).toHaveBeenCalledWith(
+      expect.objectContaining({ activeSpace: "docs" }),
+    );
+  });
+
+  it("keeps the current space when saving fails in two-pane mode", async () => {
+    // Given: the document list is visible and open documents cannot be saved.
+    testState.settings.folderPaneOpen = false;
+    testState.settings.listPaneOpen = true;
+    vi.mocked(testState.workspace.persistAllOpenDocuments).mockResolvedValue(
+      false,
+    );
+    const user = userEvent.setup();
+    render(<App />);
+
+    // When: the user requests the AI space.
+    await user.click(
+      await screen.findByRole("radio", {
+        name: /AI/,
+      }),
+    );
+
+    // Then: the save barrier blocks the settings transition.
+    await waitFor(() =>
+      expect(
+        testState.workspace.persistAllOpenDocuments,
+      ).toHaveBeenCalledOnce(),
+    );
+    expect(saveSettings).not.toHaveBeenCalled();
+    expect(
+      screen.getByRole<HTMLInputElement>("radio", { name: /Human/ }).checked,
+    ).toBe(true);
+  });
+
+  it("keeps one switcher and the root row in three-pane mode", async () => {
+    // Given: both navigation panes are visible.
+    testState.settings.folderPaneOpen = true;
+    testState.settings.listPaneOpen = true;
+    const { container } = render(<App />);
+
+    // When: the workspace finishes rendering.
+    await screen.findByRole("radiogroup", { name: "공간 선택" });
+
+    // Then: the folder pane owns the sole switcher and active root row.
+    expect(
+      screen.getAllByRole("radiogroup", { name: "공간 선택" }),
+    ).toHaveLength(1);
+    expect(container.querySelector(".folder-pane .root-row")).not.toBeNull();
+  });
+
+  it("hides switcher and root controls in content-only mode", async () => {
+    // Given: both navigation panes are collapsed.
+    testState.settings.folderPaneOpen = false;
+    testState.settings.listPaneOpen = false;
+    const { container } = render(<App />);
+
+    // When: the content-only workspace finishes rendering.
+    await screen.findByRole("button", {
+      name: "현재 content-only · 클릭하면 3-pane 열기",
+    });
+
+    // Then: navigation controls are not repeated in the content pane.
+    expect(
+      screen.queryAllByRole("radiogroup", { name: "공간 선택" }),
+    ).toHaveLength(0);
+    expect(container.querySelector(".root-row")).toBeNull();
   });
 });
 
