@@ -1,0 +1,18 @@
+# Changelog
+
+## [1.0.0](https://github.com/tkhwang/intent-memo/compare/v0.1.0...v1.0.0) (2026-08-07)
+
+
+### ⚠ BREAKING CHANGES
+
+* **release:** The release trigger for macOS builds has changed from `push` on `v*` tags to `release` `published` event. Manual tag pushes will no longer trigger builds.
+
+### Features
+
+* **release:** automate releases with release-please ([4417b80](https://github.com/tkhwang/intent-memo/commit/4417b80d48c65afc4380c401da228d090dae5ff7))
+* **release:** automate releases with release-please ([009d9cf](https://github.com/tkhwang/intent-memo/commit/009d9cf419fb4570fdc671f4d8f4b945c44c9d53))
+
+
+### Bug Fixes
+
+* **ci:** pass tap github token to homebrew bump ([3ccb9c6](https://github.com/tkhwang/intent-memo/commit/3ccb9c660fbc6c54288380ef8830498af417b10b))
