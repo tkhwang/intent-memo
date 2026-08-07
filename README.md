@@ -1,7 +1,7 @@
 <p align="center">English | <a href="./README.ko.md">한글</a></p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/v0.1.0-pre--release-C1734B?style=flat-square&labelColor=322F29" alt="v0.1.0 pre-release">
+  <img src="https://img.shields.io/badge/v0.2.0-C1734B?style=flat-square" alt="v0.2.0">
   <img src="https://img.shields.io/badge/macOS-322F29?style=flat-square&logo=apple&logoColor=F4EEE2" alt="macOS">
   <img src="https://img.shields.io/badge/Tauri_2-322F29?style=flat-square&logo=tauri&logoColor=F4EEE2" alt="Tauri 2">
   <img src="https://img.shields.io/badge/React_19-322F29?style=flat-square&logo=react&logoColor=F4EEE2" alt="React 19">
@@ -18,7 +18,7 @@
 
 ## Why intent, not prompts
 
-Intent Memo pivoted from PromptPad, a tool for composing and copying finished AI prompts. What you need before a good prompt is intent — what you want, and why. Intent Memo focuses on that pre-prompt record.
+What you need before a good prompt is intent — what you want, and why. Intent Memo focuses on that pre-prompt record.
 
 <p align="center">
   <img src="./assets/readme/original-first-en.svg" width="100%" alt="You write your thinking and intent down; it becomes the local Markdown original you own. AI features arrive only in later versions as a derived layer that never replaces the original.">
@@ -41,6 +41,14 @@ Intent Memo pivoted from PromptPad, a tool for composing and copying finished AI
 - Light · Charcoal · Dark · System themes and fixed CJK typography
 
 Search, tags, a Markdown toolbar, images, wiki/backlinks, an LLM runtime, and AI-managed folders are follow-up scope.
+
+## Install
+
+```bash
+brew install --cask tkhwang/tap/intent-memo
+```
+
+Or download the signed `.dmg` from [Releases](https://github.com/tkhwang/intent-memo/releases).
 
 ## Data
 
@@ -76,9 +84,9 @@ pnpm tauri:build
 
 ## Release
 
-The first Intent Memo release is `v0.1.0`. The legacy PromptPad releases and `v0.1.x` tags are deleted from this repository before tagging, so the greenfield `0.1.0` line starts clean. The sources already carry `0.1.0`; tag the first release directly without running `pnpm release`. From the second release on, use `pnpm release patch`, `pnpm release minor`, or `pnpm release major`.
+Releases are automated with release-please. Conventional commits merged into `main` open (or update) a release PR that bumps `package.json`, `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml`, and `src-tauri/Cargo.lock` and maintains the changelog. Merging that release PR publishes the `v*` GitHub release, which builds the signed macOS DMGs, uploads them to the release, and renders `distribution/homebrew/intent-memo.rb` with checksums into `tkhwang/homebrew-tap`.
 
-A `v*` tag triggers the signed macOS release workflow. Publishing the draft release triggers `.github/workflows/homebrew-bump.yml`, which renders `distribution/homebrew/intent-memo.rb` with release checksums and updates `tkhwang/homebrew-tap`. The repository secret `TAP_GITHUB_TOKEN` must have Contents write access to that tap.
+The automation needs two repository secrets: `RELEASE_PLEASE_TOKEN` (Contents, Pull requests, and Issues write on this repo) and `TAP_GITHUB_TOKEN` (Contents write on the tap).
 
 ## Stack
 

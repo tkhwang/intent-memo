@@ -1,7 +1,7 @@
 <p align="center"><a href="./README.md">English</a> | 한글</p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/v0.1.0-pre--release-C1734B?style=flat-square&labelColor=322F29" alt="v0.1.0 pre-release">
+  <img src="https://img.shields.io/badge/v0.2.0-C1734B?style=flat-square" alt="v0.2.0">
   <img src="https://img.shields.io/badge/macOS-322F29?style=flat-square&logo=apple&logoColor=F4EEE2" alt="macOS">
   <img src="https://img.shields.io/badge/Tauri_2-322F29?style=flat-square&logo=tauri&logoColor=F4EEE2" alt="Tauri 2">
   <img src="https://img.shields.io/badge/React_19-322F29?style=flat-square&logo=react&logoColor=F4EEE2" alt="React 19">
@@ -20,7 +20,7 @@
 
 ## 왜 prompt가 아니라 의도인가
 
-완성된 AI prompt를 작성해 복사하는 PromptPad에서 pivot한 제품입니다. 좋은 prompt보다 먼저 필요한 것은 "내가 무엇을, 왜 원하는가"라는 의도이며, Intent Memo는 그 prompt 이전 단계의 기록에 집중합니다.
+좋은 prompt보다 먼저 필요한 것은 "내가 무엇을, 왜 원하는가"라는 의도이며, Intent Memo는 그 prompt 이전 단계의 기록에 집중합니다.
 
 <p align="center">
   <img src="./assets/readme/original-first-ko.svg" width="100%" alt="나의 생각과 의도를 직접 기록하면 내가 소유한 로컬 Markdown 원본이 되고, AI 기능은 후속 버전에서 원본을 대체하지 않는 파생 계층으로만 추가됩니다.">
@@ -43,6 +43,14 @@
 - Light · Charcoal · Dark · System 테마와 고정 CJK typography
 
 검색, tags, Markdown toolbar, 이미지, wiki/backlink, LLM runtime과 AI 관리 폴더는 후속 범위입니다.
+
+## Install
+
+```bash
+brew install --cask tkhwang/tap/intent-memo
+```
+
+또는 [Releases](https://github.com/tkhwang/intent-memo/releases)에서 서명된 `.dmg`를 직접 내려받아 설치합니다.
 
 ## Data
 
@@ -78,9 +86,9 @@ pnpm tauri:build
 
 ## Release
 
-첫 Intent Memo 릴리스는 `v0.1.0`입니다. 태그 생성 전에 기존 PromptPad 릴리스와 `v0.1.x` 태그를 저장소에서 삭제해 greenfield `0.1.0` 라인을 깨끗하게 시작합니다. 소스는 이미 `0.1.0`이므로 첫 릴리스는 `pnpm release` 없이 태그를 직접 생성하고, 두 번째 릴리스부터 `pnpm release patch`, `pnpm release minor`, `pnpm release major` 중 하나를 사용합니다.
+릴리스는 release-please로 자동화되어 있습니다. conventional commit이 `main`에 merge되면 release PR이 열리고(또는 갱신되고), 이 PR이 `package.json`, `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml`, `src-tauri/Cargo.lock` 버전과 changelog를 관리합니다. release PR을 merge하면 `v*` GitHub 릴리스가 publish되고, 서명된 macOS DMG를 빌드해 릴리스에 업로드한 뒤 `distribution/homebrew/intent-memo.rb`를 checksum과 함께 렌더링해 `tkhwang/homebrew-tap`에 반영합니다.
 
-A `v*` tag triggers the signed macOS release workflow. Publishing the draft release triggers `.github/workflows/homebrew-bump.yml`, which renders `distribution/homebrew/intent-memo.rb` with release checksums and updates `tkhwang/homebrew-tap`. The repository secret `TAP_GITHUB_TOKEN` must have Contents write access to that tap.
+자동화에는 repo secret 두 개가 필요합니다: `RELEASE_PLEASE_TOKEN`(이 repo의 Contents·Pull requests·Issues write)과 `TAP_GITHUB_TOKEN`(tap의 Contents write).
 
 ## Stack
 

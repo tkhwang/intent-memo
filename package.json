@@ -15,8 +15,7 @@
     "tauri:dev:mas": "tauri dev --features app-store --config src-tauri/tauri.appstore.conf.json",
     "tauri:build": "tauri build",
     "tauri:build:mas": "rustup target add x86_64-apple-darwin 2>/dev/null; tauri build --target universal-apple-darwin --features app-store --config src-tauri/tauri.appstore.conf.json",
-    "clean": "rimraf dist *.tsbuildinfo src-tauri/target node_modules",
-    "release": "bumpp --files package.json src-tauri/Cargo.toml src-tauri/tauri.conf.json -x \"cargo check --manifest-path src-tauri/Cargo.toml && git add src-tauri/Cargo.lock\""
+    "clean": "rimraf dist *.tsbuildinfo src-tauri/target node_modules"
   },
   "dependencies": {
     "@codemirror/lang-markdown": "6.5.1",
