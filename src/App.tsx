@@ -1,13 +1,8 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { open, confirm as showConfirmation } from "@tauri-apps/plugin-dialog";
-import {
-  Files,
-  FolderCog,
-  NotebookPen,
-  Plus,
-  RefreshCw,
-  X,
-} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import { Columns2, Eye, PanelLeft, PencilLine, Plus, X } from "lucide-react";
+import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DocumentList } from "@/components/DocumentList";
 import { FolderTree } from "@/components/FolderTree";
@@ -22,8 +17,16 @@ import {
   runCloseBarrier,
   useLibraryWorkspace,
 } from "@/hooks/useLibraryWorkspace";
+import { formatRootDisplay } from "@/lib/rootDisplay";
 import { loadSettings, nextPaneLayout, saveSettings } from "@/lib/settings";
-import type { LayoutSettings, Space, TabSession } from "@/types/library";
+import { applyResolvedTheme, resolveTheme } from "@/lib/theme";
+import type {
+  EditorMode,
+  LayoutSettings,
+  Space,
+  TabSession,
+  Theme,
+} from "@/types/library";
 
 type DialogKind =
   | "document"
@@ -37,6 +40,53 @@ type MoveTarget = {
   readonly path: string;
 };
 
+type ModeControl = {
+  readonly icon: LucideIcon;
+  readonly label: string;
+  readonly next: EditorMode;
+};
+
+const MODE_CONTROLS = {
+  edit: {
+    icon: PencilLine,
+    label: "현재 Edit · 클릭하면 View",
+    next: "view",
+  },
+  view: {
+    icon: Eye,
+    label: "현재 View · 클릭하면 Edit | View 분할",
+    next: "split",
+  },
+  split: {
+    icon: Columns2,
+    label: "현재 Edit | View 분할 · 클릭하면 Edit",
+    next: "edit",
+  },
+} satisfies Record<EditorMode, ModeControl>;
+
+type WindowFrameProps = {
+  readonly children: ReactNode;
+  readonly documentTitle?: string;
+};
+
+function WindowFrame({ children, documentTitle }: WindowFrameProps) {
+  return (
+    <div className="window-frame">
+      <header className="window-titlebar" data-tauri-drag-region>
+        <strong className="window-titlebar-service" data-tauri-drag-region>
+          Intent Memo
+        </strong>
+        {documentTitle ? (
+          <span className="window-titlebar-document" data-tauri-drag-region>
+            {documentTitle}
+          </span>
+        ) : null}
+      </header>
+      <div className="window-content">{children}</div>
+    </div>
+  );
+}
+
 export function App() {
   if (new URLSearchParams(window.location.search).has("showcase")) {
     return <PrimitiveShowcase />;
@@ -48,6 +98,15 @@ export function App() {
 function RuntimeApp() {
   const [settings, setSettings] = useState<LayoutSettings | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const theme = settings?.theme ?? "light";
+
+  useEffect(() => {
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
+    const apply = () => applyResolvedTheme(resolveTheme(theme, media.matches));
+    apply();
+    media.addEventListener("change", apply);
+    return () => media.removeEventListener("change", apply);
+  }, [theme]);
 
   useEffect(() => {
     loadSettings()
@@ -61,23 +120,19 @@ function RuntimeApp() {
       });
   }, []);
 
-  if (loadError) return <FatalScreen message={loadError} />;
-
-  if (!settings) {
-    return <LoadingScreen />;
+  if (loadError) {
+    return (
+      <WindowFrame>
+        <FatalScreen message={loadError} />
+      </WindowFrame>
+    );
   }
 
-  if (!settings.libraryRoot) {
+  if (!settings) {
     return (
-      <WelcomeScreen
-        onChoose={async () => {
-          const root = await chooseLibrary("Intent library 선택");
-          if (!root) return;
-          const next = { ...settings, libraryRoot: root };
-          setSettings(next);
-          await saveSettings(next);
-        }}
-      />
+      <WindowFrame>
+        <LoadingScreen />
+      </WindowFrame>
     );
   }
 
@@ -85,32 +140,50 @@ function RuntimeApp() {
     setSettings(next);
     await saveSettings(next);
   };
-
-  if (settings.activeSpace === "docs" && !settings.docsRoot) {
-    return (
-      <DocsWelcomeScreen
-        onChoose={async () => {
-          const root = await chooseLibrary("Docs folder 선택");
-          if (!root) return;
-          await updateSettings({ ...settings, docsRoot: root });
-        }}
-        onSpaceChange={async (space) => {
-          await updateSettings({ ...settings, activeSpace: space });
-        }}
-      />
-    );
-  }
-
   const root =
     settings.activeSpace === "intent"
       ? settings.libraryRoot
       : settings.docsRoot;
 
+  if (!root && settings.activeSpace === "intent") {
+    return (
+      <WindowFrame>
+        <WelcomeScreen
+          onChoose={async () => {
+            const root = await chooseLibrary("Human folder 선택");
+            if (!root) return;
+            await updateSettings({ ...settings, libraryRoot: root });
+          }}
+          onSpaceChange={async (space) => {
+            await updateSettings({ ...settings, activeSpace: space });
+          }}
+        />
+      </WindowFrame>
+    );
+  }
+
+  if (!root) {
+    return (
+      <WindowFrame>
+        <DocsWelcomeScreen
+          onChoose={async () => {
+            const root = await chooseLibrary("AI folder 선택");
+            if (!root) return;
+            await updateSettings({ ...settings, docsRoot: root });
+          }}
+          onSpaceChange={async (space) => {
+            await updateSettings({ ...settings, activeSpace: space });
+          }}
+        />
+      </WindowFrame>
+    );
+  }
+
   return (
     <LibraryApp
       key={`${settings.activeSpace}:${root}`}
       onSettingsChange={updateSettings}
-      root={root ?? settings.libraryRoot}
+      root={root}
       settings={settings}
     />
   );
@@ -138,11 +211,15 @@ function LoadingScreen() {
 
 type WelcomeScreenProps = {
   readonly onChoose: () => Promise<void>;
+  readonly onSpaceChange: (space: Space) => Promise<void>;
 };
 
-function WelcomeScreen({ onChoose }: WelcomeScreenProps) {
+function WelcomeScreen({ onChoose, onSpaceChange }: WelcomeScreenProps) {
   return (
-    <main className="welcome-screen">
+    <main className="welcome-screen" data-space="intent">
+      <div className="welcome-switcher">
+        <SpaceSwitcher activeSpace="intent" onChange={onSpaceChange} />
+      </div>
       <div className="welcome-mark">IM</div>
       <p className="eyebrow">Intent Memo · 의도 메모</p>
       <h1>
@@ -159,7 +236,7 @@ function WelcomeScreen({ onChoose }: WelcomeScreenProps) {
         onClick={() => void onChoose()}
         type="button"
       >
-        Markdown library 선택
+        Human folder 선택
       </button>
     </main>
   );
@@ -175,23 +252,23 @@ function DocsWelcomeScreen({
   onSpaceChange,
 }: DocsWelcomeScreenProps) {
   return (
-    <main className="docs-welcome-screen">
-      <div className="docs-welcome-switcher">
+    <main className="docs-welcome-screen" data-space="docs">
+      <div className="welcome-switcher">
         <SpaceSwitcher activeSpace="docs" onChange={onSpaceChange} />
       </div>
       <div className="docs-welcome-copy">
-        <p className="eyebrow">Docs · 참고 문서</p>
-        <h1>계속 읽고 다듬을 Markdown 폴더를 연결하세요.</h1>
+        <p className="eyebrow">AI · 구현 결과</p>
+        <h1>AI가 만든 Markdown 결과를 읽을 폴더를 연결하세요.</h1>
         <p>
-          AI 결과나 프로젝트 문서를 참고하는 별도 공간입니다. 원본 파일은 선택한
-          폴더에 그대로 유지됩니다.
+          내 의도와 취향으로 AI가 만든 결과를 읽는 공간입니다. 원본 파일은
+          선택한 폴더에 그대로 유지됩니다.
         </p>
         <button
           className="primary-button welcome-action"
           onClick={() => void onChoose()}
           type="button"
         >
-          Docs folder 선택
+          AI folder 선택
         </button>
       </div>
     </main>
@@ -205,6 +282,7 @@ type LibraryAppProps = {
 };
 
 function LibraryApp({ root, settings, onSettingsChange }: LibraryAppProps) {
+  const rootName = formatRootDisplay(root).leaf;
   const defaultMode = settings.activeSpace === "docs" ? "view" : "edit";
   const persistTabSession = useCallback(
     (session: TabSession) => {
@@ -232,21 +310,22 @@ function LibraryApp({ root, settings, onSettingsChange }: LibraryAppProps) {
   const folderVisible = settings.listPaneOpen && settings.folderPaneOpen;
   const layoutControl = !settings.listPaneOpen
     ? {
-        count: 1,
         label: "현재 content-only · 클릭하면 3-pane 열기",
         state: "focus",
       }
     : folderVisible
       ? {
-          count: 3,
           label: "현재 3-pane · 클릭하면 folder pane 닫기",
           state: "full",
         }
       : {
-          count: 2,
           label: "현재 2-pane · 클릭하면 content-only 전환",
           state: "compact",
         };
+  const modeControl = workspace.activeDocument
+    ? MODE_CONTROLS[workspace.activeDocument.mode]
+    : null;
+  const ModeIcon = modeControl?.icon ?? PencilLine;
 
   const updateLayout = useCallback(
     (partial: Partial<LayoutSettings>) => {
@@ -275,8 +354,8 @@ function LibraryApp({ root, settings, onSettingsChange }: LibraryAppProps) {
   }, [settings.folderPaneOpen, settings.listPaneOpen, updateLayout]);
 
   const folderOptions = useMemo(
-    () => [{ path: "", name: "Library" }, ...workspace.snapshot.folders],
-    [workspace.snapshot.folders],
+    () => [{ path: "", name: rootName }, ...workspace.snapshot.folders],
+    [rootName, workspace.snapshot.folders],
   );
 
   const moveDestinations = useMemo(() => {
@@ -311,7 +390,7 @@ function LibraryApp({ root, settings, onSettingsChange }: LibraryAppProps) {
   const handleRootChange = async (space: Space) => {
     if (!(await workspace.persistAllOpenDocuments())) return;
     const nextRoot = await chooseLibrary(
-      space === "intent" ? "Intent library 선택" : "Docs folder 선택",
+      space === "intent" ? "Human folder 선택" : "AI folder 선택",
     );
     if (!nextRoot) return;
     await onSettingsChange(
@@ -376,303 +455,280 @@ function LibraryApp({ root, settings, onSettingsChange }: LibraryAppProps) {
     restoreActionFocus();
   };
 
-  if (workspace.loading) return <LoadingScreen />;
+  if (workspace.loading) {
+    return (
+      <WindowFrame>
+        <LoadingScreen />
+      </WindowFrame>
+    );
+  }
 
   return (
-    <main
-      className={`app-shell ${folderVisible ? "has-folders" : ""} ${settings.listPaneOpen ? "has-list" : "content-only"}`}
-    >
-      {folderVisible && (
-        <aside className="pane folder-pane">
-          <div className="space-header">
-            <SpaceSwitcher
-              activeSpace={settings.activeSpace}
-              onChange={changeSpace}
-            />
-            <span className="shortcut-hint">⌘1</span>
-          </div>
-          <header className="pane-header folder-header">
-            <strong>Folders</strong>
-            <button
-              className="icon-button"
-              aria-label="새 폴더"
-              onClick={() => setDialog("folder")}
-              type="button"
-            >
-              <Plus size={15} />
-            </button>
-          </header>
-          <FolderTree
-            folders={workspace.snapshot.folders}
-            onMove={(path, origin) => {
-              actionOriginRef.current = origin;
-              workspace.setSelectedFolder(path);
-              setMoveTarget({ kind: "folder", path });
-            }}
-            onRename={(path, origin) => {
-              actionOriginRef.current = origin;
-              workspace.setSelectedFolder(path);
-              setDialogTargetPath(path);
-              setDialog("rename-folder");
-            }}
-            onSelect={workspace.setSelectedFolder}
-            onTrash={(path, origin) => void confirmTrashFolder(path, origin)}
-            selectedPath={workspace.selectedFolder}
-          />
-          <fieldset className="base-folder-list">
-            <legend className="sr-only">Base folders</legend>
-            <button
-              aria-label={`Intent base folder 변경: ${settings.libraryRoot ?? "선택 안 됨"}`}
-              className="base-folder-row"
-              data-active={settings.activeSpace === "intent"}
-              onClick={() => void handleRootChange("intent")}
-              type="button"
-            >
-              <NotebookPen aria-hidden="true" size={14} />
-              <span className="base-folder-copy">
-                <strong>Intent</strong>
-                <span title={settings.libraryRoot ?? "선택 안 됨"}>
-                  {settings.libraryRoot ?? "선택 안 됨"}
-                </span>
-              </span>
-            </button>
-            <button
-              aria-label={`Docs base folder 변경: ${settings.docsRoot ?? "선택 안 됨"}`}
-              className="base-folder-row"
-              data-active={settings.activeSpace === "docs"}
-              onClick={() => void handleRootChange("docs")}
-              type="button"
-            >
-              <Files aria-hidden="true" size={14} />
-              <span className="base-folder-copy">
-                <strong>Docs</strong>
-                <span title={settings.docsRoot ?? "선택 안 됨"}>
-                  {settings.docsRoot ?? "선택 안 됨"}
-                </span>
-              </span>
-            </button>
-          </fieldset>
-        </aside>
-      )}
-
-      {settings.listPaneOpen && (
-        <section className="pane list-pane">
-          <header className="pane-header">
-            <div>
-              <strong>{folderLabel(workspace.selectedFolder)}</strong>
-              <span>{workspace.visibleDocuments.length} notes</span>
-            </div>
-            <button
-              className="icon-button"
-              aria-label="새 메모"
-              onClick={() => setDialog("document")}
-              type="button"
-            >
-              <Plus size={15} />
-            </button>
-          </header>
-          <DocumentList
-            documents={workspace.visibleDocuments}
-            onMove={(path, origin) => {
-              actionOriginRef.current = origin;
-              void workspace.openDocument(path).then((opened) => {
-                if (opened) setMoveTarget({ kind: "document", path });
-              });
-            }}
-            onRename={(path, origin) => {
-              actionOriginRef.current = origin;
-              void workspace.openDocument(path).then((opened) => {
-                if (opened) setDialog("rename-document");
-              });
-            }}
-            onSelect={(path) => void workspace.openDocument(path)}
-            onTrash={(path, origin) => void confirmTrashDocument(path, origin)}
-            selectedPath={workspace.activePath}
-          />
-        </section>
-      )}
-
-      <section className="content-pane">
-        <TabBar
-          activePath={workspace.activePath}
-          documents={workspace.openDocuments}
-          onClose={async (path) => {
-            await workspace.closeDocument(path);
-          }}
-          onSelect={workspace.setActiveDocument}
-        />
-        <header className="content-header">
-          <div className="layout-controls">
-            {!folderVisible && (
+    <WindowFrame documentTitle={workspace.activeDocument?.title}>
+      <main
+        className={`app-shell ${folderVisible ? "has-folders" : ""} ${settings.listPaneOpen ? "has-list" : "content-only"}`}
+        data-space={settings.activeSpace}
+      >
+        {folderVisible && (
+          <aside className="pane folder-pane">
+            <div className="space-header">
               <SpaceSwitcher
                 activeSpace={settings.activeSpace}
-                compact
                 onChange={changeSpace}
+                onRootChange={() => void handleRootChange(settings.activeSpace)}
+                root={root}
               />
-            )}
-            <button
-              aria-label={layoutControl.label}
-              className="icon-button layout-cycle-button"
-              data-layout={layoutControl.state}
-              onClick={() => updateLayout(nextPaneLayout(settings))}
-              title={layoutControl.label}
-              type="button"
-            >
-              <RefreshCw aria-hidden="true" size={14} />
-              <span aria-hidden="true">{layoutControl.count}</span>
-            </button>
-          </div>
-          <button
-            aria-label={`${settings.activeSpace === "intent" ? "Intent" : "Docs"} base folder 변경: ${root}`}
-            className="active-root"
-            onClick={() => void handleRootChange(settings.activeSpace)}
-            title={root}
-            type="button"
-          >
-            <FolderCog aria-hidden="true" size={14} />
-            <strong>
-              {settings.activeSpace === "intent" ? "Intent" : "Docs"}
-            </strong>
-            <span>{root}</span>
-          </button>
+              <span className="shortcut-hint">⌘1</span>
+            </div>
+            <header className="pane-header folder-header">
+              <strong>Folders</strong>
+              <button
+                className="icon-button"
+                aria-label="새 폴더"
+                onClick={() => setDialog("folder")}
+                type="button"
+              >
+                <Plus size={15} />
+              </button>
+            </header>
+            <FolderTree
+              folders={workspace.snapshot.folders}
+              rootName={rootName}
+              onMove={(path, origin) => {
+                actionOriginRef.current = origin;
+                workspace.setSelectedFolder(path);
+                setMoveTarget({ kind: "folder", path });
+              }}
+              onRename={(path, origin) => {
+                actionOriginRef.current = origin;
+                workspace.setSelectedFolder(path);
+                setDialogTargetPath(path);
+                setDialog("rename-folder");
+              }}
+              onSelect={workspace.setSelectedFolder}
+              onTrash={(path, origin) => void confirmTrashFolder(path, origin)}
+              selectedPath={workspace.selectedFolder}
+            />
+            <label className="theme-picker">
+              <span>테마</span>
+              <select
+                onChange={(event) =>
+                  updateLayout({ theme: event.currentTarget.value as Theme })
+                }
+                value={settings.theme}
+              >
+                <option value="light">Light</option>
+                <option value="charcoal">Charcoal</option>
+                <option value="dark">Dark</option>
+                <option value="system">System</option>
+              </select>
+            </label>
+          </aside>
+        )}
+
+        {settings.listPaneOpen && (
+          <section className="pane list-pane">
+            <header className="pane-header">
+              <div>
+                <strong>
+                  {workspace.selectedFolder === ""
+                    ? rootName
+                    : folderLabel(workspace.selectedFolder)}
+                </strong>
+                <span>{workspace.visibleDocuments.length} notes</span>
+              </div>
+              <button
+                className="icon-button"
+                aria-label="새 메모"
+                onClick={() => setDialog("document")}
+                type="button"
+              >
+                <Plus size={15} />
+              </button>
+            </header>
+            <DocumentList
+              documents={workspace.visibleDocuments}
+              snippets={workspace.visibleSnippets}
+              onMove={(path, origin) => {
+                actionOriginRef.current = origin;
+                void workspace.openDocument(path).then((opened) => {
+                  if (opened) setMoveTarget({ kind: "document", path });
+                });
+              }}
+              onRename={(path, origin) => {
+                actionOriginRef.current = origin;
+                void workspace.openDocument(path).then((opened) => {
+                  if (opened) setDialog("rename-document");
+                });
+              }}
+              onSelect={(path) => void workspace.openDocument(path)}
+              onTrash={(path, origin) =>
+                void confirmTrashDocument(path, origin)
+              }
+              selectedPath={workspace.activePath}
+            />
+          </section>
+        )}
+
+        <section className="content-pane">
+          <TabBar
+            activePath={workspace.activePath}
+            documents={workspace.openDocuments}
+            leadingAction={
+              <button
+                aria-label={layoutControl.label}
+                className="icon-button layout-cycle-button"
+                data-layout={layoutControl.state}
+                onClick={() => updateLayout(nextPaneLayout(settings))}
+                title={layoutControl.label}
+                type="button"
+              >
+                <PanelLeft aria-hidden="true" size={16} />
+              </button>
+            }
+            onClose={async (path) => {
+              await workspace.closeDocument(path);
+            }}
+            onSelect={workspace.setActiveDocument}
+            trailingActions={
+              modeControl ? (
+                <>
+                  <span className={`save-status ${workspace.saveStatus}`}>
+                    {saveLabel(workspace.saveStatus)}
+                  </span>
+                  <button
+                    aria-label={modeControl.label}
+                    className="icon-button mode-cycle-button"
+                    data-mode={workspace.activeDocument?.mode}
+                    onClick={() => workspace.setMode(modeControl.next)}
+                    title={modeControl.label}
+                    type="button"
+                  >
+                    <ModeIcon aria-hidden="true" size={16} />
+                  </button>
+                </>
+              ) : null
+            }
+          />
+
+          {workspace.errorMessage && (
+            <div className="inline-notice" role="alert">
+              <span>{workspace.errorMessage}</span>
+              <button
+                className="icon-button"
+                aria-label="오류 닫기"
+                onClick={workspace.clearError}
+                type="button"
+              >
+                <X size={14} />
+              </button>
+            </div>
+          )}
+
           {workspace.activeDocument ? (
-            <div className="content-actions">
-              <span className={`save-status ${workspace.saveStatus}`}>
-                {saveLabel(workspace.saveStatus)}
-              </span>
-              <fieldset className="mode-switch">
-                <legend className="sr-only">문서 보기 모드</legend>
-                <button
-                  aria-pressed={workspace.activeDocument.mode === "edit"}
-                  onClick={() => workspace.setMode("edit")}
-                  type="button"
-                >
-                  Edit
-                </button>
-                <button
-                  aria-pressed={workspace.activeDocument.mode === "view"}
-                  onClick={() => workspace.setMode("view")}
-                  type="button"
-                >
-                  View
-                </button>
-              </fieldset>
-            </div>
-          ) : null}
-        </header>
-
-        {workspace.errorMessage && (
-          <div className="inline-notice" role="alert">
-            <span>{workspace.errorMessage}</span>
-            <button
-              className="icon-button"
-              aria-label="오류 닫기"
-              onClick={workspace.clearError}
-              type="button"
-            >
-              <X size={14} />
-            </button>
-          </div>
-        )}
-
-        {workspace.activeDocument ? (
-          <>
             <div
-              className={`editor-surface ${workspace.activeDocument.mode === "edit" ? "" : "is-hidden"}`}
+              className={`document-surface ${workspace.activeDocument.mode === "split" ? "is-split" : ""}`}
+              data-mode={workspace.activeDocument.mode}
             >
-              <MarkdownEditor
-                documentKey={workspace.activeDocument.path}
-                onChange={workspace.updateBody}
-                openDocumentKeys={workspace.openDocuments.map(
-                  (document) => document.path,
-                )}
-                value={workspace.activeDocument.body}
-                visible={workspace.activeDocument.mode === "edit"}
-              />
+              <div
+                className={`editor-surface ${workspace.activeDocument.mode === "view" ? "is-hidden" : ""}`}
+              >
+                <MarkdownEditor
+                  documentKey={workspace.activeDocument.path}
+                  onChange={workspace.updateBody}
+                  openDocumentKeys={workspace.openDocuments.map(
+                    (document) => document.path,
+                  )}
+                  value={workspace.activeDocument.body}
+                  visible={workspace.activeDocument.mode !== "view"}
+                />
+              </div>
+              {workspace.activeDocument.mode !== "edit" && (
+                <MarkdownView body={workspace.activeDocument.body} />
+              )}
             </div>
-            {workspace.activeDocument.mode === "view" && (
-              <MarkdownView body={workspace.activeDocument.body} />
-            )}
-          </>
-        ) : (
-          <div className="content-empty">
-            {settings.activeSpace === "intent" ? (
-              <p>
-                목적·배경·제약·완료 조건을
-                <br />한 줄부터 남겨보세요.
-              </p>
-            ) : (
-              <p>
-                계속 참고할 문서를
-                <br />
-                선택하거나 새로 만드세요.
-              </p>
-            )}
-            <button
-              className="primary-button"
-              onClick={() => setDialog("document")}
-              type="button"
-            >
-              {settings.activeSpace === "intent" ? "새 메모" : "새 문서"}
-            </button>
-          </div>
-        )}
-      </section>
+          ) : (
+            <div className="content-empty">
+              {settings.activeSpace === "intent" ? (
+                <p>
+                  내가 남기는 의도와 취향,
+                  <br />
+                  AI 요청의 출발점입니다
+                </p>
+              ) : (
+                <p>
+                  내 의도와 취향으로
+                  <br />
+                  AI가 만든 결과입니다
+                </p>
+              )}
+              <button
+                className="primary-button"
+                onClick={() => setDialog("document")}
+                type="button"
+              >
+                {settings.activeSpace === "intent" ? "새 메모" : "새 문서"}
+              </button>
+            </div>
+          )}
+        </section>
 
-      <NameDialog
-        initialValue={
-          dialog === "rename-document"
-            ? workspace.activeDocument?.title
-            : dialog === "rename-folder"
-              ? folderLabel(dialogTargetPath ?? "")
-              : ""
-        }
-        label={
-          dialog === "document" || dialog === "rename-document"
-            ? "파일명이 될 제목"
-            : "폴더 이름"
-        }
-        onCancel={closeActionDialog}
-        onSubmit={async (value) => {
-          if (dialog === "document") await workspace.addDocument(value);
-          if (dialog === "folder") await workspace.addFolder(value);
-          if (dialog === "rename-document") await workspace.renameActive(value);
-          if (dialog === "rename-folder" && dialogTargetPath)
-            await workspace.renameFolderAt(dialogTargetPath, value);
-          closeActionDialog();
-        }}
-        open={dialog !== null}
-        submitLabel={
-          dialog === "rename-document" || dialog === "rename-folder"
-            ? "이름 변경"
-            : "만들기"
-        }
-        title={
-          dialog === "document"
-            ? "새 메모"
-            : dialog === "rename-document"
-              ? "메모 이름 변경"
+        <NameDialog
+          initialValue={
+            dialog === "rename-document"
+              ? workspace.activeDocument?.title
               : dialog === "rename-folder"
-                ? "폴더 이름 변경"
-                : "새 폴더"
-        }
-      />
-      <MoveDialog
-        destinations={moveDestinations}
-        onCancel={closeActionDialog}
-        onSubmit={async (destination) => {
-          if (moveTarget?.kind === "document") {
-            await workspace.moveActive(destination);
+                ? folderLabel(dialogTargetPath ?? "")
+                : ""
           }
-          if (moveTarget?.kind === "folder") {
-            await workspace.moveFolderAt(moveTarget.path, destination);
+          label={
+            dialog === "document" || dialog === "rename-document"
+              ? "파일명이 될 제목"
+              : "폴더 이름"
           }
-          closeActionDialog();
-        }}
-        open={moveTarget !== null}
-        title={moveTarget?.kind === "folder" ? "폴더 이동" : "메모 이동"}
-      />
-    </main>
+          onCancel={closeActionDialog}
+          onSubmit={async (value) => {
+            if (dialog === "document") await workspace.addDocument(value);
+            if (dialog === "folder") await workspace.addFolder(value);
+            if (dialog === "rename-document")
+              await workspace.renameActive(value);
+            if (dialog === "rename-folder" && dialogTargetPath)
+              await workspace.renameFolderAt(dialogTargetPath, value);
+            closeActionDialog();
+          }}
+          open={dialog !== null}
+          submitLabel={
+            dialog === "rename-document" || dialog === "rename-folder"
+              ? "이름 변경"
+              : "만들기"
+          }
+          title={
+            dialog === "document"
+              ? "새 메모"
+              : dialog === "rename-document"
+                ? "메모 이름 변경"
+                : dialog === "rename-folder"
+                  ? "폴더 이름 변경"
+                  : "새 폴더"
+          }
+        />
+        <MoveDialog
+          destinations={moveDestinations}
+          onCancel={closeActionDialog}
+          onSubmit={async (destination) => {
+            if (moveTarget?.kind === "document") {
+              await workspace.moveActive(destination);
+            }
+            if (moveTarget?.kind === "folder") {
+              await workspace.moveFolderAt(moveTarget.path, destination);
+            }
+            closeActionDialog();
+          }}
+          open={moveTarget !== null}
+          title={moveTarget?.kind === "folder" ? "폴더 이동" : "메모 이동"}
+        />
+      </main>
+    </WindowFrame>
   );
 }
 
@@ -686,7 +742,6 @@ async function chooseLibrary(title: string): Promise<string | null> {
 }
 
 function folderLabel(path: string): string {
-  if (path === "") return "Library";
   return path.split("/").at(-1) ?? path;
 }
 

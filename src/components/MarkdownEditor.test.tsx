@@ -39,6 +39,32 @@ function PendingRender({
 }
 
 describe("MarkdownEditor", () => {
+  it("marks Markdown syntax markers without coloring content text", async () => {
+    const { container } = render(
+      <MarkdownEditor
+        documentKey="markers.md"
+        openDocumentKeys={["markers.md"]}
+        visible
+        value={"# Heading\n\n- Item\n\n> Quote\n\n```ts\ncode\n```\n\n---"}
+        onChange={() => undefined}
+      />,
+    );
+
+    await screen.findByLabelText("Markdown 본문");
+    const markers = [...container.querySelectorAll(".cm-space-mark")].map(
+      (element) => element.textContent,
+    );
+
+    expect(markers).toEqual(
+      expect.arrayContaining(["#", "-", ">", "```", "---"]),
+    );
+    expect(
+      [...container.querySelectorAll(".cm-space-mark")].some((element) =>
+        /Heading|Item|Quote|code/.test(element.textContent ?? ""),
+      ),
+    ).toBe(false);
+  });
+
   it("keeps using the committed onChange while a callback update is pending", async () => {
     const committedOnChange = vi.fn();
     const pendingOnChange = vi.fn();

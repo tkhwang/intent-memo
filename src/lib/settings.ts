@@ -1,6 +1,6 @@
 import { LazyStore } from "@tauri-apps/plugin-store";
 import { z } from "zod";
-import { type LayoutSettings, SPACES } from "@/types/library";
+import { type LayoutSettings, SPACES, THEMES } from "@/types/library";
 
 const store = new LazyStore("settings.json");
 
@@ -9,12 +9,15 @@ const tabSessionSchema = z.object({
   activePath: z.string().nullable(),
 });
 
+const themeSchema = z.enum(THEMES);
+
 const settingsSchema = z.object({
   libraryRoot: z.string().min(1).nullable(),
   docsRoot: z.string().min(1).nullable(),
   activeSpace: z.enum(SPACES),
   folderPaneOpen: z.boolean(),
   listPaneOpen: z.boolean(),
+  theme: themeSchema,
   tabSessions: z.object({
     intent: tabSessionSchema,
     docs: tabSessionSchema,
@@ -27,6 +30,7 @@ const defaultSettings: LayoutSettings = {
   activeSpace: "intent",
   folderPaneOpen: true,
   listPaneOpen: true,
+  theme: "light",
   tabSessions: {
     intent: { paths: [], activePath: null },
     docs: { paths: [], activePath: null },
@@ -52,6 +56,7 @@ export async function loadSettings(): Promise<LayoutSettings> {
     activeSpace,
     folderPaneOpen,
     listPaneOpen,
+    theme,
     tabSessions,
   ] = await Promise.all([
     store.get<unknown>("libraryRoot"),
@@ -59,14 +64,17 @@ export async function loadSettings(): Promise<LayoutSettings> {
     store.get<unknown>("activeSpace"),
     store.get<unknown>("folderPaneOpen"),
     store.get<unknown>("listPaneOpen"),
+    store.get<unknown>("theme"),
     store.get<unknown>("tabSessions"),
   ]);
+  const parsedTheme = themeSchema.safeParse(theme ?? defaultSettings.theme);
   const parsed = settingsSchema.safeParse({
     libraryRoot: libraryRoot ?? defaultSettings.libraryRoot,
     docsRoot: docsRoot ?? defaultSettings.docsRoot,
     activeSpace: activeSpace ?? defaultSettings.activeSpace,
     folderPaneOpen: folderPaneOpen ?? defaultSettings.folderPaneOpen,
     listPaneOpen: listPaneOpen ?? defaultSettings.listPaneOpen,
+    theme: parsedTheme.success ? parsedTheme.data : defaultSettings.theme,
     tabSessions: tabSessions ?? defaultSettings.tabSessions,
   });
   return parsed.success ? parsed.data : defaultSettings;
@@ -80,6 +88,7 @@ export async function saveSettings(settings: LayoutSettings): Promise<void> {
     store.set("activeSpace", parsed.activeSpace),
     store.set("folderPaneOpen", parsed.folderPaneOpen),
     store.set("listPaneOpen", parsed.listPaneOpen),
+    store.set("theme", parsed.theme),
     store.set("tabSessions", parsed.tabSessions),
   ]);
   await store.save();

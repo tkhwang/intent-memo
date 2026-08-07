@@ -5,6 +5,7 @@ import type { FolderEntry } from "@/types/library";
 
 type FolderTreeProps = {
   readonly folders: readonly FolderEntry[];
+  readonly rootName: string;
   readonly selectedPath: string;
   readonly onSelect: (path: string) => void;
   readonly onMove: (path: string, origin: HTMLElement) => void;
@@ -14,6 +15,7 @@ type FolderTreeProps = {
 
 export function FolderTree({
   folders,
+  rootName,
   selectedPath,
   onSelect,
   onMove,
@@ -34,11 +36,11 @@ export function FolderTree({
   }, [folders]);
 
   return (
-    <nav aria-label="Library folders" className="folder-tree">
+    <nav aria-label={`${rootName} folders`} className="folder-tree">
       <FolderButton
         depth={0}
         icon="library"
-        name="Library"
+        name={rootName}
         onSelect={onSelect}
         onMove={onMove}
         onRename={onRename}

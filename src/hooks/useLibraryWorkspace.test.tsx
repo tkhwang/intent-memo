@@ -8,6 +8,7 @@ const native = vi.hoisted(() => ({
   createFolder: vi.fn(),
   moveEntry: vi.fn(),
   readDocument: vi.fn(),
+  readDocumentSnippets: vi.fn(),
   renameDocument: vi.fn(),
   renameFolder: vi.fn(),
   saveDocument: vi.fn(),
@@ -38,6 +39,10 @@ describe("useLibraryWorkspace tabs", () => {
     });
     native.readDocument.mockImplementation((_root: string, path: string) =>
       Promise.resolve({ path, content: content(path), mtimeMs: 1 }),
+    );
+    native.readDocumentSnippets.mockImplementation(
+      (_root: string, paths: readonly string[]) =>
+        Promise.resolve(paths.map((path) => ({ path, snippet: path }))),
     );
     native.saveDocument.mockImplementation(
       (_root: string, path: string, markdown: string) =>
@@ -155,6 +160,174 @@ describe("useLibraryWorkspace tabs", () => {
       "a.md",
     ]);
     expect(result.current.activeDocument?.path).toBe("renamed/c.md");
+  });
+});
+
+describe("useLibraryWorkspace snippets", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    native.createFolder.mockResolvedValue({ path: "new" });
+    native.scanLibrary.mockResolvedValue({
+      folders: [{ path: "folder", parent: "", name: "folder" }],
+      documents,
+    });
+    native.readDocument.mockImplementation((_root: string, path: string) =>
+      Promise.resolve({ path, content: content(path), mtimeMs: 1 }),
+    );
+    native.readDocumentSnippets.mockImplementation(
+      (_root: string, paths: readonly string[]) =>
+        Promise.resolve(
+          paths.map((path) => ({ path, snippet: `snippet:${path}` })),
+        ),
+    );
+    native.saveDocument.mockImplementation(
+      (_root: string, path: string, markdown: string) =>
+        Promise.resolve({ path, content: markdown, mtimeMs: 5 }),
+    );
+  });
+
+  it("loads only documents visible in the selected folder as one batch", async () => {
+    const { result } = renderHook(() =>
+      useLibraryWorkspace("/root", { defaultMode: "edit" }),
+    );
+
+    await waitFor(() =>
+      expect(native.readDocumentSnippets).toHaveBeenCalledWith("/root", [
+        "a.md",
+        "b.md",
+      ]),
+    );
+    expect([...result.current.visibleSnippets]).toEqual([
+      ["a.md", "snippet:a.md"],
+      ["b.md", "snippet:b.md"],
+    ]);
+  });
+
+  it("reuses matching cache entries and reloads only a changed mtime", async () => {
+    const { result } = renderHook(() =>
+      useLibraryWorkspace("/root", { defaultMode: "edit" }),
+    );
+    await waitFor(() => expect(native.readDocumentSnippets).toHaveBeenCalled());
+
+    act(() => result.current.setSelectedFolder("folder"));
+    await waitFor(() =>
+      expect(native.readDocumentSnippets).toHaveBeenCalledWith("/root", [
+        "folder/c.md",
+      ]),
+    );
+    act(() => result.current.setSelectedFolder(""));
+    await waitFor(() =>
+      expect(result.current.visibleDocuments).toHaveLength(2),
+    );
+    expect(
+      native.readDocumentSnippets.mock.calls.filter(
+        ([, paths]) => paths.length === 2,
+      ),
+    ).toHaveLength(1);
+
+    native.scanLibrary.mockResolvedValue({
+      folders: [{ path: "folder", parent: "", name: "folder" }],
+      documents: [
+        { ...documents[0], updatedMs: 2 },
+        documents[1],
+        documents[2],
+      ],
+    });
+    await act(async () => {
+      await result.current.addFolder("new");
+    });
+    await waitFor(() =>
+      expect(native.readDocumentSnippets).toHaveBeenCalledWith("/root", [
+        "a.md",
+      ]),
+    );
+  });
+
+  it("refreshes a saved row snippet and reorders its updated time", async () => {
+    native.scanLibrary.mockResolvedValue({
+      folders: [{ path: "folder", parent: "", name: "folder" }],
+      documents: [
+        { ...documents[1], updatedMs: 4 },
+        documents[0],
+        documents[2],
+      ],
+    });
+    native.readDocumentSnippets.mockImplementation(
+      (_root: string, paths: readonly string[]) =>
+        Promise.resolve(
+          paths.map((path) => ({
+            path,
+            snippet: paths.length === 1 ? "fresh A" : `old:${path}`,
+          })),
+        ),
+    );
+    const { result } = renderHook(() =>
+      useLibraryWorkspace("/root", { defaultMode: "edit" }),
+    );
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    await act(async () => {
+      await result.current.openDocument("a.md");
+    });
+    act(() => result.current.updateBody("fresh A"));
+
+    await act(async () => {
+      await result.current.persistCurrent();
+    });
+
+    expect(result.current.visibleDocuments.map((entry) => entry.path)).toEqual([
+      "a.md",
+      "b.md",
+    ]);
+    expect(result.current.visibleDocuments[0].updatedMs).toBe(5);
+    expect(result.current.visibleSnippets.get("a.md")).toBe("fresh A");
+  });
+
+  it("deduplicates the save refresh from the visible-document effect", async () => {
+    const { result } = renderHook(() =>
+      useLibraryWorkspace("/root", { defaultMode: "edit" }),
+    );
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    await act(async () => {
+      await result.current.openDocument("a.md");
+    });
+    act(() => result.current.updateBody("changed"));
+    await act(async () => {
+      await result.current.persistCurrent();
+    });
+
+    expect(
+      native.readDocumentSnippets.mock.calls.filter(
+        ([, paths]) => paths.length === 1 && paths[0] === "a.md",
+      ),
+    ).toHaveLength(1);
+  });
+
+  it("keeps navigation available when snippets are null or a batch fails", async () => {
+    native.readDocumentSnippets
+      .mockResolvedValueOnce([
+        { path: "a.md", snippet: null },
+        { path: "b.md", snippet: "cached B" },
+      ])
+      .mockRejectedValueOnce(new Error("temporary read failure"));
+    const { result } = renderHook(() =>
+      useLibraryWorkspace("/root", { defaultMode: "edit" }),
+    );
+    await waitFor(() =>
+      expect(result.current.visibleSnippets.get("b.md")).toBe("cached B"),
+    );
+    expect(result.current.visibleSnippets.has("a.md")).toBe(false);
+
+    act(() => result.current.setSelectedFolder("folder"));
+    await waitFor(() =>
+      expect(native.readDocumentSnippets).toHaveBeenCalledTimes(2),
+    );
+    await act(async () => {
+      await expect(result.current.openDocument("folder/c.md")).resolves.toBe(
+        true,
+      );
+    });
+    expect(result.current.errorMessage).toBeNull();
+    expect(result.current.visibleSnippets.size).toBe(0);
   });
 });
 

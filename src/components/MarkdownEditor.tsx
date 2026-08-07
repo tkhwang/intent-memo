@@ -3,14 +3,17 @@ import { markdown } from "@codemirror/lang-markdown";
 import {
   defaultHighlightStyle,
   syntaxHighlighting,
+  syntaxTree,
 } from "@codemirror/language";
-import { EditorState } from "@codemirror/state";
+import { EditorState, type Range } from "@codemirror/state";
 import {
+  Decoration,
   drawSelection,
   EditorView,
   highlightActiveLine,
   highlightSpecialChars,
   keymap,
+  ViewPlugin,
 } from "@codemirror/view";
 import { useCallback, useEffect, useRef } from "react";
 
@@ -21,6 +24,48 @@ type MarkdownEditorProps = {
   readonly value: string;
   readonly onChange: (value: string) => void;
 };
+
+const markerNodes = new Set([
+  "HeaderMark",
+  "ListMark",
+  "QuoteMark",
+  "CodeMark",
+  "HorizontalRule",
+]);
+
+const markdownMarkerDecorations = ViewPlugin.fromClass(
+  class {
+    decorations;
+
+    constructor(view: EditorView) {
+      this.decorations = buildMarkerDecorations(view);
+    }
+
+    update(update: {
+      readonly docChanged: boolean;
+      readonly view: EditorView;
+    }) {
+      if (update.docChanged) {
+        this.decorations = buildMarkerDecorations(update.view);
+      }
+    }
+  },
+  { decorations: (plugin) => plugin.decorations },
+);
+
+function buildMarkerDecorations(view: EditorView) {
+  const ranges: Range<Decoration>[] = [];
+  syntaxTree(view.state).iterate({
+    enter(node) {
+      if (markerNodes.has(node.name) && node.from < node.to) {
+        ranges.push(
+          Decoration.mark({ class: "cm-space-mark" }).range(node.from, node.to),
+        );
+      }
+    },
+  });
+  return Decoration.set(ranges, true);
+}
 
 export function MarkdownEditor({
   documentKey,
@@ -50,6 +95,7 @@ export function MarkdownEditor({
           drawSelection(),
           highlightActiveLine(),
           markdown(),
+          markdownMarkerDecorations,
           syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
           keymap.of([...defaultKeymap, ...historyKeymap]),
           EditorView.lineWrapping,

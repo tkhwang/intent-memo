@@ -6,6 +6,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             library::scan_library,
             library::read_document,
+            library::read_document_snippets,
             library::create_document,
             library::save_document,
             library::rename_document,
