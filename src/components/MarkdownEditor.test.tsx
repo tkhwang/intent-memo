@@ -16,6 +16,8 @@ import {
   MarkdownEditor,
   markdownMarkerDecorations,
 } from "@/components/MarkdownEditor";
+import { I18nProvider } from "@/lib/i18n";
+import type { Language } from "@/types/library";
 
 beforeEach(() => {
   vi.stubGlobal("requestAnimationFrame", () => 0);
@@ -88,7 +90,7 @@ describe("MarkdownEditor", () => {
       />,
     );
 
-    await screen.findByLabelText("Markdown 본문");
+    await screen.findByLabelText("Markdown body");
     const markers = [...container.querySelectorAll(".cm-space-mark")].map(
       (element) => element.textContent,
     );
@@ -101,6 +103,37 @@ describe("MarkdownEditor", () => {
         /Heading|Item|Quote|code/.test(element.textContent ?? ""),
       ),
     ).toBe(false);
+  });
+
+  it("updates the accessible label without replacing the document", async () => {
+    function Harness() {
+      const [language, setLanguage] = useState<Language>("en");
+      return (
+        <I18nProvider language={language}>
+          <button type="button" onClick={() => setLanguage("ko")}>
+            한국어
+          </button>
+          <MarkdownEditor
+            documentKey="localized.md"
+            openDocumentKeys={["localized.md"]}
+            visible
+            value="Draft"
+            onChange={() => undefined}
+          />
+        </I18nProvider>
+      );
+    }
+
+    render(<Harness />);
+    expect((await screen.findByLabelText("Markdown body")).textContent).toBe(
+      "Draft",
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "한국어" }));
+
+    expect((await screen.findByLabelText("Markdown 본문")).textContent).toBe(
+      "Draft",
+    );
   });
 
   it("keeps using the committed onChange while a callback update is pending", async () => {
@@ -140,7 +173,7 @@ describe("MarkdownEditor", () => {
     }
 
     render(<Harness />);
-    const content = await screen.findByLabelText("Markdown 본문");
+    const content = await screen.findByLabelText("Markdown body");
     const view = EditorView.findFromDOM(content);
     expect(view).not.toBeNull();
 
