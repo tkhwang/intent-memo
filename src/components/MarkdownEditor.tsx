@@ -16,6 +16,7 @@ import {
   ViewPlugin,
 } from "@codemirror/view";
 import { useCallback, useEffect, useRef } from "react";
+import { useI18n } from "@/lib/i18n";
 
 type MarkdownEditorProps = {
   readonly documentKey: string;
@@ -87,12 +88,15 @@ export function MarkdownEditor({
   value,
   onChange,
 }: MarkdownEditorProps) {
+  const messages = useI18n();
   const hostRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const statesRef = useRef(new Map<string, EditorState>());
   const currentKeyRef = useRef(documentKey);
   const onChangeRef = useRef(onChange);
   const initialValueRef = useRef(value);
+  const ariaLabelRef = useRef(messages.editor.body);
+  ariaLabelRef.current = messages.editor.body;
 
   useEffect(() => {
     onChangeRef.current = onChange;
@@ -113,7 +117,7 @@ export function MarkdownEditor({
           keymap.of([...defaultKeymap, ...historyKeymap]),
           EditorView.lineWrapping,
           EditorView.contentAttributes.of({
-            "aria-label": "Markdown 본문",
+            "aria-label": ariaLabelRef.current,
             spellcheck: "true",
           }),
           EditorView.updateListener.of((update) => {
@@ -178,6 +182,13 @@ export function MarkdownEditor({
   useEffect(() => {
     if (visible) viewRef.current?.requestMeasure();
   }, [visible]);
+
+  useEffect(() => {
+    viewRef.current?.contentDOM.setAttribute(
+      "aria-label",
+      messages.editor.body,
+    );
+  }, [messages.editor.body]);
 
   return <div className="markdown-editor" ref={hostRef} />;
 }
